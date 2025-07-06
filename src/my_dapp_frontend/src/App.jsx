@@ -10,12 +10,30 @@ import Homepage from './components/Layout/HomePage';
 
 
 function App() {
-  // 
+  const [userRole, setUserRole] = useState(null);
+  const [userName, setUserName] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const handleLogin = (name, role) => {
+    setUserName(name);
+    setUserRole(role);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    setUserName('');
+    setUserRole(null);
+    setIsLoggedIn(false);
+  };
+
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <main>
       <BrowserRouter>
-      <Header/>
+      <Header userRole={userRole} userName={userName} onLogout={handleLogout} />
       <Routes>
         <Route path= "/" element= {<Homepage/>}/>
         <Route path= "/dashboard" element= {<Dashboard/>}/>
