@@ -8,7 +8,7 @@ function Header() {
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
               <span className="text-blue-600 font-bold text-sm">SC</span>
             </div>
-            <h1 className="text-xl font-bold">Supply Chain DApp</h1>
+            <h1 onClick={() => navigate("/")} className="text-xl font-bold cursor-pointer">Supply Chain DApp</h1>
           </div>
           
           <nav className="hidden md:flex space-x-6">

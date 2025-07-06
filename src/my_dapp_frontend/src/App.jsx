@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import ProductList from './components/Products/ProductList';
 import OrderList from './components/Orders/OrderList';
+import Homepage from './components/Layout/HomePage';
 
 
 function App() {
@@ -16,7 +17,8 @@ function App() {
       <BrowserRouter>
       <Header/>
       <Routes>
-        <Route path= "/" element= {<Dashboard/>}/>
+        <Route path= "/" element= {<Homepage/>}/>
+        <Route path= "/dashboard" element= {<Dashboard/>}/>
         <Route path= "/products" element= {<ProductList/>}/>
         <Route path= "/orders" element= {<OrderList/>}/>
       
