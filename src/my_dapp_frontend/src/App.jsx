@@ -1,32 +1,29 @@
 import { useState } from 'react';
 import { my_dapp_backend } from 'declarations/my_dapp_backend';
 import Header from './components/Layout/Header';
-import NavBar from './components/Layout/NavBar';
 import Footer from './components/Layout/Footer';
 import Dashboard from './components/Dashboard/Dashboard';
+import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import ProductList from './components/Products/ProductList';
 import OrderList from './components/Orders/OrderList';
 
-function App() {
-  const [greeting, setGreeting] = useState('');
 
-  // function handleSubmit(event) {
-  //   event.preventDefault();
-  //   const name = event.target.elements.name.value;
-  //   my_dapp_backend.greet(name).then((greeting) => {
-  //     setGreeting(greeting);
-  //   });
-  //   return false;
-  // }
+function App() {
+  // 
 
   return (
     <main>
-      <Header>Supply Chain Dapp</Header>
-      <NavBar />
-      <Dashboard />
-      <ProductList />
-      <OrderList />
-      <Footer />
+      <BrowserRouter>
+      <Header/>
+      <Routes>
+        <Route path= "/" element= {<Dashboard/>}/>
+        <Route path= "/products" element= {<ProductList/>}/>
+        <Route path= "/orders" element= {<OrderList/>}/>
+      
+     </Routes>
+     <Footer />
+      </BrowserRouter>
+     
     </main>
   );
 }
@@ -43,3 +40,15 @@ export default App;
 //   <button type="submit">Click Me!</button>
 // </form>
 // <section id="greeting">{greeting}</section>
+
+
+// const [greeting, setGreeting] = useState('');
+
+  // // function handleSubmit(event) {
+  // //   event.preventDefault();
+  // //   const name = event.target.elements.name.value;
+  // //   my_dapp_backend.greet(name).then((greeting) => {
+  // //     setGreeting(greeting);
+  // //   });
+  // //   return false;
+  // // }

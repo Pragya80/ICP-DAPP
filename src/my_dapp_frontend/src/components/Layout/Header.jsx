@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function Header() {
     return(
         <header className="bg-blue-600 text-white p-4 shadow-lg">
@@ -10,9 +12,9 @@ function Header() {
           </div>
           
           <nav className="hidden md:flex space-x-6">
-            <a href="#" className="hover:text-blue-200 transition-colors">Dashboard</a>
-            <a href="#" className="hover:text-blue-200 transition-colors">Products</a>
-            <a href="#" className="hover:text-blue-200 transition-colors">Orders</a>
+            <Link to="/dashboard" className="hover:text-blue-200 transition-colors">Dashboard</Link>
+            <Link to="/products" className="hover:text-blue-200 transition-colors">Products</Link>
+            <Link to="/orders" className="hover:text-blue-200 transition-colors">Orders</Link>
           </nav>
           
           <div>
