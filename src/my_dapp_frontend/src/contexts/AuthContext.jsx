@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async () => {
+  const login = async (selectedRole = 'customer') => {
     if (!state.authClient) return;
 
     try {
@@ -57,7 +57,24 @@ export function AuthProvider({ children }) {
       
       await state.authClient.login({
         identityProvider,
-        onSuccess: initializeAuth
+        onSuccess: () => {
+          // Update user with selected role after successful login
+          const identity = state.authClient.getIdentity();
+          const principal = identity.getPrincipal();
+          const user = {
+            principal: principal.toString(),
+            name: `User-${principal.toString().slice(0, 8)}`,
+            role: selectedRole,
+            isActive: true
+          };
+          
+          setState(prev => ({
+            ...prev,
+            isAuthenticated: true,
+            user,
+            isLoading: false
+          }));
+        }
       });
     } catch (error) {
       console.error('Login failed:', error);
