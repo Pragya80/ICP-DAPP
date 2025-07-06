@@ -222,7 +222,7 @@ struct TrackingUpdate {
 ### **5.4 Navigation**
 - Responsive design
 - Role-based navigation
-- Breadcrumb navigation
+- Breadcrumb navigation ??
 
 ---
 
@@ -254,25 +254,25 @@ struct TrackingUpdate {
 
 ## **7. Development Roadmap**
 
-### **Phase 1: Foundation (Week 1)**
+### **Phase 1: Foundation (Day 1)**
 - [ ] Project setup and configuration
 - [ ] Basic canister structure
 - [ ] User authentication
 - [ ] Simple product management
 
-### **Phase 2: Core Features (Week 2)**
+### **Phase 2: Core Features (Day 2)**
 - [ ] Order management system
 - [ ] Basic tracking functionality
 - [ ] User interface development
 - [ ] Integration testing
 
-### **Phase 3: Enhancement (Week 3)**
+### **Phase 3: Enhancement (Day 3)**
 - [ ] Advanced tracking features
 - [ ] UI/UX improvements
 - [ ] Error handling
 - [ ] Performance optimization
 
-### **Phase 4: Deployment (Week 4)**
+### **Phase 4: Deployment (Day 4)**
 - [ ] Testing and bug fixes
 - [ ] Documentation
 - [ ] Mainnet deployment
