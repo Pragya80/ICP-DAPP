@@ -1,50 +1,55 @@
-import { useState } from 'react';
-import { my_dapp_backend } from 'declarations/my_dapp_backend';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
+import Homepage from './components/Layout/HomePage';
 import Dashboard from './components/Dashboard/Dashboard';
-import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import ProductList from './components/Products/ProductList';
 import OrderList from './components/Orders/OrderList';
-import Homepage from './components/Layout/HomePage';
+import Login from './components/Auth/Login';
 
+function AppContent() {
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-function App() {
-  const [userRole, setUserRole] = useState(null);
-  const [userName, setUserName] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleLogin = (name, role) => {
-    setUserName(name);
-    setUserRole(role);
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setUserName('');
-    setUserRole(null);
-    setIsLoggedIn(false);
-  };
-
-  // if (!isLoggedIn) {
-  //   return <Login onLogin={handleLogin} />;
-  // }
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   return (
-    <main>
-      <BrowserRouter>
-      <Header userRole={userRole} userName={userName} onLogout={handleLogout} />
-      <Routes>
-        <Route path= "/" element= {<Homepage/>}/>
-        <Route path= "/dashboard" element= {<Dashboard/>}/>
-        <Route path= "/products" element= {<ProductList/>}/>
-        <Route path= "/orders" element= {<OrderList/>}/>
-      
-     </Routes>
-     <Footer />
-      </BrowserRouter>
-     
-    </main>
+    <BrowserRouter>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1">
+          <Routes>
+            <Route path="/" element={<Homepage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/products" element={<ProductList />} />
+            <Route path="/orders" element={<OrderList />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
