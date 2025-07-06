@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import CreateOrderForm from './CreateOrderForm';
 
 function OrderList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-
-  const orders = [
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [orders, setOrders] = useState([
     {
       id: 'ORD001',
       customer: 'John Doe',
@@ -32,7 +33,19 @@ function OrderList() {
       date: '2024-01-13',
       orderType: 'Distributor to Retailer'
     }
+  ]);
+
+  // Sample products for the form
+  const products = [
+    { id: 1, name: "Laptop", price: 999 },
+    { id: 2, name: "Smartphone", price: 599 },
+    { id: 3, name: "T-Shirt", price: 25 },
+    { id: 4, name: "Coffee Mug", price: 15 },
   ];
+
+  const handleCreateOrder = (newOrder) => {
+    setOrders([newOrder, ...orders]);
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -62,7 +75,10 @@ function OrderList() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Orders</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        <button 
+          onClick={() => setShowCreateForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
           Create New Order
         </button>
       </div>
@@ -162,6 +178,14 @@ function OrderList() {
       <div className="mt-4 text-sm text-gray-600">
         Showing {filteredOrders.length} of {orders.length} orders
       </div>
+
+      {showCreateForm && (
+        <CreateOrderForm 
+          onClose={() => setShowCreateForm(false)}
+          onCreateOrder={handleCreateOrder}
+          products={products}
+        />
+      )}
     </div>
   );
 }

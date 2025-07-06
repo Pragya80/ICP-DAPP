@@ -37,10 +37,10 @@ function AddProductForm({ onClose, onAddProduct }) {
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
                 <h2 className="text-xl font-bold mb-4">Add New Product</h2>
                 <div className="space-y-4">
-                    <div>
+        <div>
                         <label className="block text-sm font-medium mb-1">Product Name</label>
-                        <input
-                            type="text"
+          <input 
+            type="text" 
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
@@ -57,9 +57,9 @@ function AddProductForm({ onClose, onAddProduct }) {
                             onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
-                        />
-                    </div>
-                    <div>
+          />
+        </div>
+        <div>
                         <label className="block text-sm font-medium mb-1">Category</label>
                         <select
                             name="category"
@@ -69,11 +69,11 @@ function AddProductForm({ onClose, onAddProduct }) {
                             required
                         >
                             <option value="">Select Category</option>
-                            <option value="Electronics">Electronics</option>
-                            <option value="Clothing">Clothing</option>
-                            <option value="Home">Home</option>
-                        </select>
-                    </div>
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Home">Home</option>
+          </select>
+        </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Manufacturer</label>
                         <input
@@ -85,7 +85,7 @@ function AddProductForm({ onClose, onAddProduct }) {
                             required
                         />
                     </div>
-                    <div>
+        <div>
                         <label className="block text-sm font-medium mb-1">Status</label>
                         <select
                             name="status"
@@ -93,10 +93,10 @@ function AddProductForm({ onClose, onAddProduct }) {
                             onChange={handleChange}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="Available">Available</option>
-                            <option value="Out of Stock">Out of Stock</option>
-                        </select>
-                    </div>
+            <option value="Available">Available</option>
+            <option value="Out of Stock">Out of Stock</option>
+          </select>
+        </div>
                     <div className="flex gap-2 pt-4">
                         <button
                             type="button"
@@ -148,7 +148,7 @@ function ProductList() {
                 >
                     Add New Product
                 </button>
-            </div>
+      </div>
 
             {/* Search Input */}
             <div className="mb-6">
@@ -181,14 +181,14 @@ function ProductList() {
                         }`}>
                             {product.status}
                         </span>
-                    </div>
-                ))}
+            </div>
+        ))}
             </div>
 
             {/* Results Count */}
             <div className="mt-4 text-sm text-gray-600">
                 Showing {filteredProducts.length} of {products.length} products
-            </div>
+      </div>
 
             {showAddForm && (
                 <AddProductForm 
@@ -196,7 +196,7 @@ function ProductList() {
                     onAddProduct={handleAddProduct}
                 />
             )}
-        </div>
+      </div>
     );
 }
 
