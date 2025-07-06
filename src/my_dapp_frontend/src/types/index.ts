@@ -126,6 +126,7 @@ export interface CreateProductForm {
   price: number;
   category: string;
   specifications: Array<{key: string, value: string}>;
+  manufacturer: string;
 }
 
 export interface CreateOrderForm {
