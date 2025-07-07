@@ -104,7 +104,7 @@ pub fn register_user(
     USERS.with(|users| {
         let mut users = users.borrow_mut();
 
-        if users,contains_key(&caller){
+        if users.contains_key(&caller){
             return Err("User already registered".to_string());
         }
 
@@ -125,11 +125,36 @@ pub fn register_user(
 
 //get user
 #[ic_cdk::query]
-pub fn get_user(principal: Principal) -> Option<User> 
+pub fn get_user(principal: Principal) -> Option<User> {
+    USERS.with(|users| {
+        users.borrow().get(&principal).cloned()
+
+        
+    })
+}
 
 //get current user
 #[ic_cdk::query]
-pub fn get_current_user() -> Option<User>
+pub fn get_current_user() -> Option<User> {
+   let caller = get_caller();
+   get_user(caller)
+}
+
+//update user role
+#[ic_cdk::update]
+pub fn update_user_role(role:UserRole) -> Result<User,String>{
+    let caller = get_caller();
+    USERS.with(|users| {
+        let mut users = users.borrow_mut();
+        if let Some(user) = users.get_mut(&caller){
+            user.role = role;
+            Ok(user.clone())
+        } else {
+            Err("User not found".to_string())
+        }
+    })
+
+}
 
 
 
@@ -143,3 +168,47 @@ pub fn get_current_user() -> Option<User>
 // ===== STORAGE =====
 // ===== UTILITY FUNCTIONS =====
 // ===== USER MANAGEMENT =====
+
+
+
+
+
+// #[derive(CandidType, Deserialize, Clone)]
+// pub enum OrderStatus {
+//     Pending,
+//     Confirmed,
+//     InTransit,
+//     Delivered,
+//     Cancelled,
+// }
+
+// #[derive(CandidType, Deserialize, Clone)]
+// pub struct OrderItem {
+//     pub product_id: String,
+//     pub quantity: u32,
+//     pub unit_price: f64,
+// }
+
+// #[derive(CandidType, Deserialize, Clone)]
+// pub struct Order {
+//     pub id: String,
+//     pub customer: Principal,
+//     pub items: Vec<OrderItem>,
+//     pub total_amount: f64,
+//     pub status: OrderStatus,
+//     pub created_at: u64,
+//     pub updated_at: u64,
+//     pub shipping_address: String,
+//     pub notes: Option<String>,
+// }
+
+
+
+// thread_local! {
+//     static USERS: RefCell<HashMap<Principal, User>> = RefCell::new(HashMap::new());
+//     static PRODUCTS: RefCell<HashMap<String, Product>> = RefCell::new(HashMap::new());
+//     static ORDERS: RefCell<HashMap<String, Order>> = RefCell::new(HashMap::new());
+//     static SUPPLY_CHAIN_EVENTS: RefCell<Vec<SupplyChainEvent>> = RefCell::new(Vec::new());
+// }
+
+
