@@ -6,16 +6,16 @@
 Supply Chain Management DApp (SCM-DApp)
 
 ### **1.2 Project Description**
-A decentralized application (DApp) built on the Internet Computer (ICP) that provides a simple, transparent, and secure supply chain management system. The MVP focuses on connecting manufacturers and customers through a streamlined ordering and tracking process.
+A decentralized application (DApp) built on the Internet Computer (ICP) that provides a simple, transparent, and secure supply chain tracking system. The MVP focuses on tracking products from manufacturer to customer through a simplified product flow system.
 
 ### **1.3 Project Scope**
-**MVP Version 1.0** - Simple supply chain management with basic product management, order processing, and tracking capabilities.
+**MVP Version 1.0** - Simple supply chain tracking with product management and flow tracking capabilities.
 
 ### **1.4 Target Users**
-- **Manufacturers**: Create and manage products, supply to distributors
-- **Distributors**: Purchase from manufacturers, supply to retailers
-- **Retailers**: Purchase from distributors, sell to customers
-- **Customers**: Browse products, place orders, track deliveries
+- **Manufacturers**: Create and manage products, transfer to distributors
+- **Distributors**: Receive products from manufacturers, transfer to retailers
+- **Retailers**: Receive products from distributors, sell to customers
+- **Customers**: Browse products, purchase and track product history
 
 ---
 
@@ -37,8 +37,8 @@ Authentication: Internet Identity
 │   (React)       │◄──►│   (Rust)        │◄──►│   (ICP)         │
 │                 │    │                 │    │                 │
 │ - User Interface│    │ - Product Mgmt  │    │ - Product Data  │
-│ - Order Mgmt    │    │ - Order Mgmt    │    │ - Order Data    │
-│ - Tracking      │    │ - Tracking      │    │ - User Data     │
+│ - Product Mgmt  │    │ - User Mgmt     │    │ - User Data     │
+│ - Tracking      │    │ - Tracking      │    │ - Event Data    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -48,10 +48,10 @@ Single Canister Approach (MVP):
 ┌─────────────────────────────────────┐
 │           SCM-Canister              │
 │                                     │
-│ ├── Product Management              │
-│ ├── Order Management                │
 │ ├── User Management                 │
-│ ├── Tracking System                 │
+│ ├── Product Management              │
+│ ├── Product Tracking                │
+│ ├── Event Logging                   │
 │ └── Data Storage                    │
 └─────────────────────────────────────┘
 ```
@@ -62,9 +62,10 @@ Single Canister Approach (MVP):
 
 ### **3.1 User Management**
 #### **3.1.1 User Registration**
-- Users can register using Internet Identity
+- Users authenticate using Internet Identity
+- After authentication, users register with additional details
 - System assigns user role (Manufacturer/Distributor/Retailer/Customer)
-- Store basic user information
+- Store basic user information (name, email, company)
 
 #### **3.1.2 User Authentication**
 - Secure login using Internet Identity
@@ -74,56 +75,53 @@ Single Canister Approach (MVP):
 ### **3.2 Product Management**
 #### **3.2.1 Product Creation**
 - Manufacturers can create new products
-- Required fields: name, description, price
-- Optional fields: category, specifications
+- Required fields: name, description, price, quantity, category
+- Product gets unique ID and tracking starts
 
 #### **3.2.2 Product Listing**
 - Display all available products
-- Filter by manufacturer
+- Filter by manufacturer, category, status
 - Search functionality
 
 #### **3.2.3 Product Updates**
 - Manufacturers can update their products
-- Availability status management
+- Status management (Available, OutOfStock, Discontinued)
 
-### **3.3 Order Management**
-#### **3.3.1 Order Creation**
-- Customers can create orders
-- Select products and quantities
-- Calculate total amount
-- Order validation
+### **3.3 Product Flow Management**
+#### **3.3.1 Product Transfer**
+- Manufacturers transfer products to Distributors
+- Distributors transfer products to Retailers
+- Retailers sell products to Customers
+- Each transfer creates a tracking event
 
-#### **3.3.2 Order Processing**
-- Order status management
-- Manufacturer notification
-- Order fulfillment workflow
+#### **3.3.2 Product Purchase**
+- Customers can purchase products from Retailers
+- Purchase creates final tracking event
+- Product status updated to "Sold"
 
-#### **3.3.3 Order History**
-- View order history for customers
-- View orders for manufacturers
+### **3.4 Supply Chain Tracking**
+#### **3.4.1 Product Journey**
+- **Level 1**: Manufacturer creates product
+- **Level 2**: Manufacturer → Distributor transfer
+- **Level 3**: Distributor → Retailer transfer  
+- **Level 4**: Retailer → Customer sale
 
-### **3.4 Supply Chain Workflow**
-#### **3.4.1 4-Level Supply Chain**
-- **Level 1**: Manufacturer creates products
-- **Level 2**: Distributor purchases from Manufacturer
-- **Level 3**: Retailer purchases from Distributor  
-- **Level 4**: Customer purchases from Retailer
-
-#### **3.4.2 Order Types**
-- **Manufacturer-Distributor Orders**: Bulk supply orders
-- **Distributor-Retailer Orders**: Regional supply orders
-- **Retailer-Customer Orders**: Final retail orders
-
-### **3.5 Supply Chain Tracking**
-#### **3.5.1 Order Tracking**
-- Real-time order status updates across all levels
-- Location tracking at each transfer point
-- Status change notifications to all parties
-
-#### **3.5.2 Event Logging**
-- Log all supply chain events at each level
-- Timestamp and actor information
+#### **3.4.2 Event Tracking**
+- Every product movement is logged
 - Complete chain of custody tracking
+- Timestamp and actor information for each event
+
+### **3.5 Product History**
+#### **3.5.1 Product Timeline**
+- View complete journey of any product
+- See all transfers and owners
+- Track from creation to final sale
+
+#### **3.5.2 User History**
+- Manufacturers: See all products they created
+- Distributors: See products they received/transferred
+- Retailers: See products they received/sold
+- Customers: See products they purchased
 
 ---
 
@@ -132,12 +130,13 @@ Single Canister Approach (MVP):
 ### **4.1 User Model**
 ```rust
 struct User {
-    id: Principal,
+    principal: Principal,
     name: String,
-    email: String,
     role: UserRole,
-    created_at: u64,
-    is_active: bool
+    email: Option<String>,
+    company: Option<String>,
+    is_active: bool,
+    created_at: u64
 }
 
 enum UserRole {
@@ -154,47 +153,32 @@ struct Product {
     id: String,
     name: String,
     description: String,
-    price: f64,
     manufacturer: Principal,
-    is_available: bool,
-    created_at: u64
-}
-```
-
-### **4.3 Order Model**
-```rust
-struct Order {
-    id: String,
-    customer: Principal,
-    items: Vec<OrderItem>,
-    total_amount: f64,
-    status: OrderStatus,
+    current_owner: Principal,
+    price: f64,
+    quantity: u32,
+    status: ProductStatus,
+    category: String,
     created_at: u64,
     updated_at: u64
 }
 
-struct OrderItem {
-    product_id: String,
-    quantity: u32,
-    unit_price: f64
-}
-
-enum OrderStatus {
-    Pending,
-    Confirmed,
-    Shipped,
-    Delivered,
-    Cancelled
+enum ProductStatus {
+    Available,
+    OutOfStock,
+    Discontinued,
+    Sold
 }
 ```
 
-### **4.4 Tracking Model**
+### **4.3 Product Event Model**
 ```rust
-struct TrackingUpdate {
-    order_id: String,
-    status: OrderStatus,
-    location: String,
-    notes: String,
+struct ProductEvent {
+    product_id: String,
+    event_type: String,      // "Created", "Transferred", "Sold"
+    from_user: Principal,
+    to_user: Principal,
+    description: String,
     timestamp: u64
 }
 ```
@@ -204,25 +188,26 @@ struct TrackingUpdate {
 ## **5. User Interface Requirements**
 
 ### **5.1 Dashboard**
-- **Manufacturer Dashboard**: Product management, distributor orders, inventory
-- **Distributor Dashboard**: Purchase from manufacturers, supply to retailers, inventory
-- **Retailer Dashboard**: Purchase from distributors, customer orders, inventory
-- **Customer Dashboard**: Product browsing, order history, tracking
+- **Manufacturer Dashboard**: Product creation, transfer to distributors, product history
+- **Distributor Dashboard**: Receive from manufacturers, transfer to retailers, inventory
+- **Retailer Dashboard**: Receive from distributors, sell to customers, inventory
+- **Customer Dashboard**: Browse products, purchase history, product tracking
 
 ### **5.2 Product Pages**
-- Product listing page
-- Product detail page
-- Product creation/editing forms
+- Product listing page with filters
+- Product detail page with tracking history
+- Product creation form (manufacturers only)
+- Product transfer form
 
-### **5.3 Order Pages**
-- Order creation page
-- Order history page
-- Order detail page with tracking
+### **5.3 Tracking Pages**
+- Product tracking timeline
+- User's product history
+- Transfer/sale forms
 
 ### **5.4 Navigation**
 - Responsive design
 - Role-based navigation
-- Breadcrumb navigation ??
+- User registration flow after login
 
 ---
 
@@ -230,7 +215,7 @@ struct TrackingUpdate {
 
 ### **6.1 Performance**
 - Page load time < 3 seconds
-- Order processing < 5 seconds
+- Product tracking queries < 2 seconds
 - Support 100+ concurrent users
 
 ### **6.2 Security**
@@ -254,25 +239,25 @@ struct TrackingUpdate {
 
 ## **7. Development Roadmap**
 
-### **Phase 1: Foundation (Day 1)**
-- [ ] Project setup and configuration
-- [ ] Basic canister structure
-- [ ] User authentication
-- [ ] Simple product management
+### **Phase 1: Foundation (Completed)**
+- [x] Project setup and configuration
+- [x] Basic canister structure
+- [x] User authentication with Internet Identity
+- [x] User registration system
 
-### **Phase 2: Core Features (Day 2)**
-- [ ] Order management system
-- [ ] Basic tracking functionality
+### **Phase 2: Core Features (Current)**
+- [ ] Product management system
+- [ ] Product tracking functionality
 - [ ] User interface development
-- [ ] Integration testing
+- [ ] Backend-frontend integration
 
-### **Phase 3: Enhancement (Day 3)**
+### **Phase 3: Enhancement**
 - [ ] Advanced tracking features
 - [ ] UI/UX improvements
 - [ ] Error handling
 - [ ] Performance optimization
 
-### **Phase 4: Deployment (Day 4)**
+### **Phase 4: Deployment**
 - [ ] Testing and bug fixes
 - [ ] Documentation
 - [ ] Mainnet deployment
@@ -284,42 +269,40 @@ struct TrackingUpdate {
 
 ### **8.1 Backend API Endpoints**
 ```
+Users:
+- POST /register_user
+- GET /get_user/{principal}
+- GET /get_current_user
+- PUT /update_user_role
+
 Products:
 - POST /create_product
+- GET /get_products
 - GET /get_product/{id}
-- GET /get_all_products
 - PUT /update_product/{id}
+- POST /transfer_product
 
-Orders:
-- POST /create_order
-- GET /get_order/{id}
-- GET /get_customer_orders
-- GET /get_manufacturer_orders
-- PUT /update_order_status/{id}
-
-Tracking:
-- GET /get_order_tracking/{id}
-- POST /add_tracking_update
+Events:
+- GET /get_product_events/{product_id}
+- GET /get_user_events/{principal}
 ```
 
 ### **8.2 Frontend Routes**
 ```
 / - Dashboard
+/register - User registration (after login)
 /products - Product listing
-/products/create - Create product
-/products/:id - Product detail
-/orders - Order history
-/orders/create - Create order
-/orders/:id - Order detail
-/tracking/:id - Order tracking
+/products/create - Create product (manufacturers)
+/products/:id - Product detail with tracking
+/transfer - Transfer products
+/history - User's product history
 ```
 
 ### **8.3 Database Schema**
 ```
-Users: id, name, email, role, created_at, is_active
-Products: id, name, description, price, manufacturer, is_available, created_at
-Orders: id, customer, items, total_amount, status, created_at, updated_at
-Tracking: order_id, status, location, notes, timestamp
+Users: principal, name, role, email, company, is_active, created_at
+Products: id, name, description, manufacturer, current_owner, price, quantity, status, category, created_at, updated_at
+ProductEvents: product_id, event_type, from_user, to_user, description, timestamp
 ```
 
 ---
@@ -364,6 +347,7 @@ Tracking: order_id, status, location, notes, timestamp
 ### **11.1 Functional Success**
 - All core features working
 - User workflows complete
+- Product tracking accurate
 - Data integrity maintained
 
 ### **11.2 Performance Success**
@@ -374,7 +358,7 @@ Tracking: order_id, status, location, notes, timestamp
 ### **11.3 User Success**
 - Intuitive user experience
 - Positive user feedback
-- Successful order completion
+- Successful product tracking
 
 ---
 
@@ -394,6 +378,6 @@ Tracking: order_id, status, location, notes, timestamp
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
 **Last Updated:** [Current Date]  
 **Next Review:** [Date + 1 week] 
