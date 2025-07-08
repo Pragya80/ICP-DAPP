@@ -84,6 +84,27 @@ fn get_caller() -> Principal {
     ic_cdk::api::caller()
 }
 
+fn add_product_event(
+    product_id: String,
+    event_type: String,
+    from_user: Principal,
+    to_user: Principal,
+    description: String,
+    timestamp: u64,
+) {
+    let event = ProductEvent {
+        product_id,
+        event_type,
+        from_user,
+        to_user,
+        description,
+        timestamp,
+    };
+    PRODUCT_EVENTS.with(|events| {
+        events.borrow_mut().push(event);
+    });
+}
+
 // ===== USER MANAGEMENT =====
 
 //register user
@@ -101,26 +122,18 @@ pub fn register_user(
     //store user to apna hashmap
     //return success ya phir error
     let caller = get_caller();
-    USERS.with(|users| {
+    USERS.with(|users|) {
         let mut users = users.borrow_mut();
 
-        if users.contains_key(&caller){
+        if users,contains_key(&caller){
             return Err("User already registered".to_string());
         }
 
         let user = User{
             principal:caller,
             name,
-            role,
-            email,
-            company,
-            is_active:true,
-            created_at:get_current_timestamp(),
         }
-
-        users.insert(caller, user.clone());
-        Ok(user)
-    })
+    }
 }
 
 //get user
@@ -128,16 +141,14 @@ pub fn register_user(
 pub fn get_user(principal: Principal) -> Option<User> {
     USERS.with(|users| {
         users.borrow().get(&principal).cloned()
-
-        
     })
 }
 
 //get current user
 #[ic_cdk::query]
-pub fn get_current_user() -> Option<User> {
-   let caller = get_caller();
-   get_user(caller)
+pub fn get_current_user() -> Option<User>{
+    let caller = get_caller();
+    get_user(caller)
 }
 
 //update user role
@@ -145,32 +156,195 @@ pub fn get_current_user() -> Option<User> {
 pub fn update_user_role(role:UserRole) -> Result<User,String>{
     let caller = get_caller();
     USERS.with(|users| {
-        let mut users = users.borrow_mut();
-        if let Some(user) = users.get_mut(&caller){
-            user.role = role;
-            Ok(user.clone())
-        } else {
-            Err("User not found".to_string())
-        }
-    })
-
 }
 
+// ===== PRODUCT MANAGEMENT =====
 
 
+//create product
+#[ic_cdk::update]
+pub fn create_product(
+    name:String,
+    description:String,
+    price:f64,
+    quantity:u32,
+    category:String
+    
+) -> Result<Product,String>{
+    let caller = get_caller();
+    //check if user exists and is a manufacturer
+    let current_user = get_current_user();
+    if let Some(user) = current_user{
+        match user.role{
+            UserRole::Manufacturer => {}, //allowed
+            _ => return Err("Unauthorized".to_string())
+        }
 
+        //create product
+        let product_id = generate_id();
+        let product = Product{
+            id:product_id.clone(),
+            name,
+            description,
+            manufacturer:caller,
+            price,
+            quantity,
+            status:ProductStatus::Available,
+            category,
+            created_at:get_current_timestamp(),
+            updated_at:get_current_timestamp(),
+        };
 
+        //store product
+        PRODUCTS.with(|products| {
+            let mut products = products.borrow_mut();
+            products.insert(product_id.clone(), product.clone());
+        });
 
+        //create product tracking event
+        add_product_event(
+            product_id,
+            "Created".to_string(),
+            caller,
+            caller,
+            format!("Product {} created by {}",name,user.name),
+            get_current_timestamp(),
+        );
 
+        Ok(product)
+    }
+}
+
+//transfer product
+#[ic_cdk::update]
+pub fn transfer_product(
+    product_id: String,
+    from_user: Principal,
+    to_user: Principal,
+    description: String,
+) -> Result<Product, String> {
+    let caller = get_caller();
+    let current_user = get_current_user();
+
+    if let Some(user) = current_user {
+        match user.role {
+            UserRole::Manufacturer => {
+                // Check if product exists and belongs to the manufacturer
+                let product = PRODUCTS.with(|products| {
+                    products.borrow().get(&product_id).cloned()
+                });
+
+                if let Some(product) = product {
+                    if product.manufacturer == caller {
+                        // Update product quantity and status
+                        let mut updated_product = product.clone();
+                        updated_product.quantity -= 1; // Assuming 1 quantity is transferred
+                        updated_product.updated_at = get_current_timestamp();
+
+                        PRODUCTS.with(|products| {
+                            let mut products = products.borrow_mut();
+                            products.insert(product_id.clone(), updated_product.clone());
+                        });
+
+                        // Create transfer event
+                        add_product_event(
+                            product_id.clone(),
+                            "Transferred".to_string(),
+                            caller,
+                            to_user,
+                            description,
+                            get_current_timestamp(),
+                        );
+
+                        Ok(updated_product)
+                    } else {
+                        Err("Product not owned by manufacturer".to_string())
+                    }
+                } else {
+                    Err("Product not found".to_string())
+                }
+            }
+            _ => Err("Unauthorized".to_string()),
+        }
+    } else {
+        Err("User not logged in".to_string())
+    }
+}
+
+//sell product
+#[ic_cdk::update]
+pub fn sell_product(
+    product_id: String,
+    customer: Principal,
+    price: f64,
+    quantity: u32,
+    description: String,
+) -> Result<Product, String> {
+    let caller = get_caller();
+    let current_user = get_current_user();
+
+    if let Some(user) = current_user {
+        match user.role {
+            UserRole::Manufacturer => {
+                // Check if product exists and belongs to the manufacturer
+                let product = PRODUCTS.with(|products| {
+                    products.borrow().get(&product_id).cloned()
+                });
+
+                if let Some(product) = product {
+                    if product.manufacturer == caller {
+                        // Update product quantity and status
+                        let mut updated_product = product.clone();
+                        updated_product.quantity -= quantity;
+                        updated_product.updated_at = get_current_timestamp();
+
+                        PRODUCTS.with(|products| {
+                            let mut products = products.borrow_mut();
+                            products.insert(product_id.clone(), updated_product.clone());
+                        });
+
+                        // Create sell event
+                        add_product_event(
+                            product_id.clone(),
+                            "Sold".to_string(),
+                            caller,
+                            customer,
+                            description,
+                            get_current_timestamp(),
+                        );
+
+                        Ok(updated_product)
+                    } else {
+                        Err("Product not owned by manufacturer".to_string())
+                    }
+                } else {
+                    Err("Product not found".to_string())
+                }
+            }
+            _ => Err("Unauthorized".to_string()),
+        }
+    } else {
+        Err("User not logged in".to_string())
+    }
+}
+
+//get product events
+#[ic_cdk::query]
+pub fn get_product_events(product_id: String) -> Vec<ProductEvent> {
+    PRODUCT_EVENTS.with(|events| {
+        events.borrow()
+            .iter()
+            .filter(|event| event.product_id == product_id)
+            .cloned()
+            .collect()
+    })
+}
 
 
 // ===== DATA STRUCTURES =====
 // ===== STORAGE =====
 // ===== UTILITY FUNCTIONS =====
 // ===== USER MANAGEMENT =====
-
-
-
 
 
 // #[derive(CandidType, Deserialize, Clone)]
@@ -210,5 +384,6 @@ pub fn update_user_role(role:UserRole) -> Result<User,String>{
 //     static ORDERS: RefCell<HashMap<String, Order>> = RefCell::new(HashMap::new());
 //     static SUPPLY_CHAIN_EVENTS: RefCell<Vec<SupplyChainEvent>> = RefCell::new(Vec::new());
 // }
+
 
 
