@@ -14,7 +14,7 @@ pub enum UserRole{
 //user struct
 #[derive(CandidType,Deserialize,Clone)]
 pub struct User{
-    pub principal: Principal,
+    pub user_principal: Principal,
     pub name: String,
     pub role: UserRole,
     pub email: Option<String>,
@@ -123,7 +123,7 @@ pub fn register_user(
             return Err("User already registered".to_string());
         }
         let user = User{
-            principal:caller,
+            user_principal:caller,
             name,
             role,
             email,
