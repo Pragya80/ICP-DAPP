@@ -1,26 +1,13 @@
-import React from 'react';
-import ManufacturerDashboard from '../components/dashboard/ManufacturerDashboard';
-import DistributorDashboard from '../components/dashboard/DistributorDashboard';
-import RetailerDashboard from '../components/dashboard/RetailerDashboard';
-import CustomerDashboard from '../components/dashboard/CustomerDashboard';
+import StatsOverview from "../components/dashboard/StatsOverview";
 
-const Dashboard = () => {
-  
-  const user = JSON.parse(localStorage.getItem("user"));
-  const role = user?.role;
-
-  switch (role) {
-    case 'Manufacturer':
-      return <ManufacturerDashboard />;
-    case 'Distributor':
-      return <DistributorDashboard />;
-    case 'Retailer':
-      return <RetailerDashboard />;
-    case 'Customer':
-      return <CustomerDashboard />;
-    default:
-      return <div className="text-red-500 p-6">Invalid role or user not found</div>;
-  }
-};
+function Dashboard() {
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+      <StatsOverview />
+      {/* You can add MetricsChart or other components here later */}
+    </div>
+  );
+}
 
 export default Dashboard;
