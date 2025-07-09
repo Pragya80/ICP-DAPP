@@ -15,45 +15,13 @@ type User = record {
     created_at: nat64;
 };
 
-type ProductStatus = variant {
-    Available;
-    OutOfStock;
-    Discontinued;
-};
-
-type Product = record {
-    id: text;
-    name: text;
-    description: text;
-    manufacturer: principal;
-    current_owner: principal;
-    price: float64;
-    quantity: nat32;
-    status: ProductStatus;
-    category: text;
-    created_at: nat64;
-    updated_at: nat64;
-};
-
-type ProductEvent = record {
-    product_id: text;
-    event_type: text;
-    description: text;
-    from_user: principal;
-    to_user: principal;
-    timestamp: nat64;
-};
-
 service : {
-    // User Management
-    register_user : (text, UserRole, opt text, opt text) -> (variant { Ok : User; Err : text });
+    register_user : (text, UserRole, opt text, opt text) -> (text);
     get_user : (principal) -> (opt User) query;
     get_current_user : () -> (opt User) query;
-    update_user_role : (UserRole) -> (variant { Ok : User; Err : text });
-
-    // Product Management
-    create_product : (text, text, float64, nat32, text) -> (variant { Ok : Product; Err : text });
-    transfer_product : (text, principal, text) -> (variant { Ok : Product; Err : text });
-    sell_product : (text, principal, float64, nat32, text) -> (variant { Ok : Product; Err : text });
-    get_product_events : (text) -> (vec ProductEvent) query;
+    update_user_role : (UserRole) -> (variant{ Ok : User; Err : text });
+    create_product : (text, text, float64, nat32, text) -> (text);
+    transfer_product : (text, text, text) -> (text);
+    sell_product : (text, text, float64, nat32, text) -> (text);
+    get_product_events : (text) -> (vec text) query;
 };
