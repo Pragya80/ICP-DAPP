@@ -21,7 +21,8 @@ pub struct User{
     pub email: Option<String>,
     pub company: Option<String>,
     pub is_active: bool,
-    pub created_at: u64,
+    pub created_at: u64
+   
 }
 
 //product status
@@ -40,6 +41,7 @@ pub struct Product{
     pub name:String,
     pub description:String,
     pub manufacturer:Principal,
+    pub current_owner: Principal, // NEW FIELD
     pub price:f64,
     pub quantity:u32,
     pub status:ProductStatus,
@@ -114,26 +116,25 @@ pub fn register_user(
     role:UserRole,
     email:Option<String>,
     company:Option<String>,
-
 ) -> Result<User,String>{
-    //get the caller
-    //check if user already exists
-    //create user
-    //store user to apna hashmap
-    //return success ya phir error
     let caller = get_caller();
-    USERS.with(|users|) {
+    USERS.with(|users| {
         let mut users = users.borrow_mut();
-
-        if users,contains_key(&caller){
+        if users.contains_key(&caller){
             return Err("User already registered".to_string());
         }
-
         let user = User{
             principal:caller,
             name,
-        }
-    }
+            role,
+            email,
+            company,
+            is_active:true,
+            created_at:get_current_timestamp(),
+        };
+        users.insert(caller, user.clone());
+        Ok(user)
+    })
 }
 
 //get user
@@ -156,6 +157,14 @@ pub fn get_current_user() -> Option<User>{
 pub fn update_user_role(role:UserRole) -> Result<User,String>{
     let caller = get_caller();
     USERS.with(|users| {
+        let mut users = users.borrow_mut();
+        if let Some(user) = users.get_mut(&caller) {
+            user.role = role;
+            Ok(user.clone())
+        } else {
+            Err("User not found".to_string())
+        }
+    })
 }
 
 // ===== PRODUCT MANAGEMENT =====
@@ -169,24 +178,21 @@ pub fn create_product(
     price:f64,
     quantity:u32,
     category:String
-    
 ) -> Result<Product,String>{
     let caller = get_caller();
-    //check if user exists and is a manufacturer
     let current_user = get_current_user();
     if let Some(user) = current_user{
         match user.role{
-            UserRole::Manufacturer => {}, //allowed
+            UserRole::Manufacturer => {},
             _ => return Err("Unauthorized".to_string())
         }
-
-        //create product
         let product_id = generate_id();
         let product = Product{
             id:product_id.clone(),
             name,
             description,
             manufacturer:caller,
+            current_owner: caller, // Set current_owner to manufacturer
             price,
             quantity,
             status:ProductStatus::Available,
@@ -194,14 +200,10 @@ pub fn create_product(
             created_at:get_current_timestamp(),
             updated_at:get_current_timestamp(),
         };
-
-        //store product
         PRODUCTS.with(|products| {
             let mut products = products.borrow_mut();
             products.insert(product_id.clone(), product.clone());
         });
-
-        //create product tracking event
         add_product_event(
             product_id,
             "Created".to_string(),
@@ -210,8 +212,9 @@ pub fn create_product(
             format!("Product {} created by {}",name,user.name),
             get_current_timestamp(),
         );
-
         Ok(product)
+    } else {
+        Err("User not logged in".to_string())
     }
 }
 
@@ -219,52 +222,57 @@ pub fn create_product(
 #[ic_cdk::update]
 pub fn transfer_product(
     product_id: String,
-    from_user: Principal,
     to_user: Principal,
     description: String,
 ) -> Result<Product, String> {
     let caller = get_caller();
     let current_user = get_current_user();
-
     if let Some(user) = current_user {
-        match user.role {
-            UserRole::Manufacturer => {
-                // Check if product exists and belongs to the manufacturer
-                let product = PRODUCTS.with(|products| {
-                    products.borrow().get(&product_id).cloned()
-                });
-
-                if let Some(product) = product {
-                    if product.manufacturer == caller {
-                        // Update product quantity and status
-                        let mut updated_product = product.clone();
-                        updated_product.quantity -= 1; // Assuming 1 quantity is transferred
-                        updated_product.updated_at = get_current_timestamp();
-
-                        PRODUCTS.with(|products| {
-                            let mut products = products.borrow_mut();
-                            products.insert(product_id.clone(), updated_product.clone());
-                        });
-
-                        // Create transfer event
-                        add_product_event(
-                            product_id.clone(),
-                            "Transferred".to_string(),
-                            caller,
-                            to_user,
-                            description,
-                            get_current_timestamp(),
-                        );
-
-                        Ok(updated_product)
-                    } else {
-                        Err("Product not owned by manufacturer".to_string())
-                    }
-                } else {
-                    Err("Product not found".to_string())
-                }
+        let product_opt = PRODUCTS.with(|products| {
+            products.borrow().get(&product_id).cloned()
+        });
+        if let Some(mut product) = product_opt {
+            // Only current_owner can transfer
+            if product.current_owner != caller {
+                return Err("You are not the current owner of this product".to_string());
             }
-            _ => Err("Unauthorized".to_string()),
+            // Manufacturer can transfer to Distributor
+            // Distributor can transfer to Retailer
+            match user.role {
+                UserRole::Manufacturer => {
+                    // Allow transfer to Distributor only
+                    let to_user_role = get_user(to_user).map(|u| u.role);
+                    if to_user_role != Some(UserRole::Distributor) {
+                        return Err("Manufacturer can only transfer to Distributor".to_string());
+                    }
+                },
+                UserRole::Distributor => {
+                    // Allow transfer to Retailer only
+                    let to_user_role = get_user(to_user).map(|u| u.role);
+                    if to_user_role != Some(UserRole::Retailer) {
+                        return Err("Distributor can only transfer to Retailer".to_string());
+                    }
+                },
+                _ => return Err("Only Manufacturer or Distributor can transfer products".to_string()),
+            }
+            // Update product owner
+            product.current_owner = to_user;
+            product.updated_at = get_current_timestamp();
+            PRODUCTS.with(|products| {
+                let mut products = products.borrow_mut();
+                products.insert(product_id.clone(), product.clone());
+            });
+            add_product_event(
+                product_id.clone(),
+                "Transferred".to_string(),
+                caller,
+                to_user,
+                description,
+                get_current_timestamp(),
+            );
+            Ok(product)
+        } else {
+            Err("Product not found".to_string())
         }
     } else {
         Err("User not logged in".to_string())
@@ -282,46 +290,39 @@ pub fn sell_product(
 ) -> Result<Product, String> {
     let caller = get_caller();
     let current_user = get_current_user();
-
     if let Some(user) = current_user {
-        match user.role {
-            UserRole::Manufacturer => {
-                // Check if product exists and belongs to the manufacturer
-                let product = PRODUCTS.with(|products| {
-                    products.borrow().get(&product_id).cloned()
-                });
-
-                if let Some(product) = product {
-                    if product.manufacturer == caller {
-                        // Update product quantity and status
-                        let mut updated_product = product.clone();
-                        updated_product.quantity -= quantity;
-                        updated_product.updated_at = get_current_timestamp();
-
-                        PRODUCTS.with(|products| {
-                            let mut products = products.borrow_mut();
-                            products.insert(product_id.clone(), updated_product.clone());
-                        });
-
-                        // Create sell event
-                        add_product_event(
-                            product_id.clone(),
-                            "Sold".to_string(),
-                            caller,
-                            customer,
-                            description,
-                            get_current_timestamp(),
-                        );
-
-                        Ok(updated_product)
-                    } else {
-                        Err("Product not owned by manufacturer".to_string())
-                    }
-                } else {
-                    Err("Product not found".to_string())
-                }
+        let product_opt = PRODUCTS.with(|products| {
+            products.borrow().get(&product_id).cloned()
+        });
+        if let Some(mut product) = product_opt {
+            // Only Retailer can sell to Customer
+            if user.role != UserRole::Retailer {
+                return Err("Only Retailer can sell to Customer".to_string());
             }
-            _ => Err("Unauthorized".to_string()),
+            if product.current_owner != caller {
+                return Err("You are not the current owner of this product".to_string());
+            }
+            // Reduce quantity
+            if product.quantity < quantity {
+                return Err("Not enough quantity available".to_string());
+            }
+            product.quantity -= quantity;
+            product.updated_at = get_current_timestamp();
+            PRODUCTS.with(|products| {
+                let mut products = products.borrow_mut();
+                products.insert(product_id.clone(), product.clone());
+            });
+            add_product_event(
+                product_id.clone(),
+                "Sold".to_string(),
+                caller,
+                customer,
+                description,
+                get_current_timestamp(),
+            );
+            Ok(product)
+        } else {
+            Err("Product not found".to_string())
         }
     } else {
         Err("User not logged in".to_string())
@@ -345,45 +346,6 @@ pub fn get_product_events(product_id: String) -> Vec<ProductEvent> {
 // ===== STORAGE =====
 // ===== UTILITY FUNCTIONS =====
 // ===== USER MANAGEMENT =====
-
-
-// #[derive(CandidType, Deserialize, Clone)]
-// pub enum OrderStatus {
-//     Pending,
-//     Confirmed,
-//     InTransit,
-//     Delivered,
-//     Cancelled,
-// }
-
-// #[derive(CandidType, Deserialize, Clone)]
-// pub struct OrderItem {
-//     pub product_id: String,
-//     pub quantity: u32,
-//     pub unit_price: f64,
-// }
-
-// #[derive(CandidType, Deserialize, Clone)]
-// pub struct Order {
-//     pub id: String,
-//     pub customer: Principal,
-//     pub items: Vec<OrderItem>,
-//     pub total_amount: f64,
-//     pub status: OrderStatus,
-//     pub created_at: u64,
-//     pub updated_at: u64,
-//     pub shipping_address: String,
-//     pub notes: Option<String>,
-// }
-
-
-
-// thread_local! {
-//     static USERS: RefCell<HashMap<Principal, User>> = RefCell::new(HashMap::new());
-//     static PRODUCTS: RefCell<HashMap<String, Product>> = RefCell::new(HashMap::new());
-//     static ORDERS: RefCell<HashMap<String, Order>> = RefCell::new(HashMap::new());
-//     static SUPPLY_CHAIN_EVENTS: RefCell<Vec<SupplyChainEvent>> = RefCell::new(Vec::new());
-// }
 
 
 
