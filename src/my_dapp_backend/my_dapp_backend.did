@@ -6,13 +6,13 @@ type UserRole = variant {
 };
 
 type User = record {
-    principal : principal;
-    name : text;
-    role : UserRole;
-    email : opt text;
-    company : opt text;
-    is_active : bool;
-    created_at : nat64;
+    principal: principal;
+    name: text;
+    role: UserRole;
+    email: opt text;
+    company: opt text;
+    is_active: bool;
+    created_at: nat64;
 };
 
 type ProductStatus = variant {
@@ -22,77 +22,38 @@ type ProductStatus = variant {
 };
 
 type Product = record {
-    id : text;
-    name : text;
-    description : text;
-    manufacturer : principal;
-    price : float64;
-    quantity : nat32;
-    status : ProductStatus;
-    category : text;
-    created_at : nat64;
-    updated_at : nat64;
+    id: text;
+    name: text;
+    description: text;
+    manufacturer: principal;
+    current_owner: principal;
+    price: float64;
+    quantity: nat32;
+    status: ProductStatus;
+    category: text;
+    created_at: nat64;
+    updated_at: nat64;
 };
 
-type OrderStatus = variant {
-    Pending;
-    Confirmed;
-    InTransit;
-    Delivered;
-    Cancelled;
-};
-
-type OrderItem = record {
-    product_id : text;
-    quantity : nat32;
-    unit_price : float64;
-};
-
-type Order = record {
-    id : text;
-    customer : principal;
-    items : vec OrderItem;
-    total_amount : float64;
-    status : OrderStatus;
-    created_at : nat64;
-    updated_at : nat64;
-    shipping_address : text;
-    notes : opt text;
-};
-
-type SupplyChainEvent = record {
-    order_id : text;
-    event_type : text;
-    description : text;
-    actor : principal;
-    timestamp : nat64;
+type ProductEvent = record {
+    product_id: text;
+    event_type: text;
+    description: text;
+    from_user: principal;
+    to_user: principal;
+    timestamp: nat64;
 };
 
 service : {
-    // Legacy function
-    "greet" : (text) -> (text) query;
-    
     // User Management
-    "register_user" : (text, UserRole, opt text, opt text) -> (variant { Ok : User; Err : text });
-    "get_user" : (principal) -> (opt User) query;
-    "get_current_user" : () -> (opt User) query;
-    "update_user_role" : (UserRole) -> (variant { Ok : User; Err : text });
-    
+    register_user : (text, UserRole, opt text, opt text) -> (variant { Ok : User; Err : text });
+    get_user : (principal) -> (opt User) query;
+    get_current_user : () -> (opt User) query;
+    update_user_role : (UserRole) -> (variant { Ok : User; Err : text });
+
     // Product Management
-    "create_product" : (text, text, float64, nat32, text) -> (variant { Ok : Product; Err : text });
-    "get_products" : () -> (vec Product) query;
-    "get_product" : (text) -> (opt Product) query;
-    "update_product" : (text, opt text, opt text, opt float64, opt nat32, opt ProductStatus) -> (variant { Ok : Product; Err : text });
-    
-    // Order Management
-    "create_order" : (vec OrderItem, text, opt text) -> (variant { Ok : Order; Err : text });
-    "get_orders" : () -> (vec Order) query;
-    "get_all_orders" : () -> (vec Order) query;
-    "update_order_status" : (text, OrderStatus) -> (variant { Ok : Order; Err : text });
-    
-    // Supply Chain Events
-    "get_supply_chain_events" : (text) -> (vec SupplyChainEvent) query;
-    
-    // Statistics
-    "get_statistics" : () -> (vec record { text; nat64 }) query;
+    create_product : (text, text, float64, nat32, text) -> (variant { Ok : Product; Err : text });
+    transfer_product : (text, principal, text) -> (variant { Ok : Product; Err : text });
+    sell_product : (text, principal, float64, nat32, text) -> (variant { Ok : Product; Err : text });
+    get_product_events : (text) -> (vec ProductEvent) query;
 };
