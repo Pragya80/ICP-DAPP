@@ -1,35 +1,54 @@
 // ===== USER TYPES =====
 
 export enum UserRole {
-  MANUFACTURER = 'manufacturer',
-  DISTRIBUTOR = 'distributor', 
-  RETAILER = 'retailer',
-  CUSTOMER = 'customer'
+  Manufacturer = 'Manufacturer',
+  Distributor = 'Distributor', 
+  Retailer = 'Retailer',
+  Customer = 'Customer'
 }
 
 export interface User {
-  id: string;
+  user_principal: string;
   name: string;
-  email: string;
   role: UserRole;
-  organization: string;
-  created_at: number;
+  email?: string;
+  company?: string;
   is_active: boolean;
+  created_at: number;
 }
 
 // ===== PRODUCT TYPES =====
+
+export enum ProductStatus {
+  Available = 'Available',
+  OutOfStock = 'OutOfStock',
+  Discontinued = 'Discontinued'
+}
 
 export interface Product {
   id: string;
   name: string;
   description: string;
-  price: number;
   manufacturer: string;
+  current_owner: string;
+  price: number;
+  quantity: number;
+  status: ProductStatus;
   category: string;
-  specifications: Array<{key: string, value: string}>;
-  is_available: boolean;
   created_at: number;
+  updated_at: number;
 }
+
+export interface ProductEvent {
+  product_id: string;
+  event_type: string;
+  description: string;
+  from_user: string;
+  to_user: string;
+  timestamp: number;
+}
+
+// ===== INVENTORY TYPES =====
 
 export interface Inventory {
   product_id: string;
@@ -125,8 +144,7 @@ export interface CreateProductForm {
   description: string;
   price: number;
   category: string;
-  specifications: Array<{key: string, value: string}>;
-  manufacturer: string;
+  quantity: number;
 }
 
 export interface CreateOrderForm {

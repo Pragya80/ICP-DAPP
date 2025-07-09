@@ -2,14 +2,15 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
-import Homepage from './components/Layout/HomePage';
+import HomePage from './components/Layout/HomePage';
 import Dashboard from './components/Dashboard/Dashboard';
 import ProductList from './components/Products/ProductList';
 import OrderList from './components/Orders/OrderList';
 import Login from './components/Auth/Login';
+import UserRegistration from './components/Auth/UserRegistration';
 
 function AppContent() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, isRegistered } = useAuth();
 
   if (isLoading) {
     return (
@@ -26,13 +27,17 @@ function AppContent() {
     return <Login />;
   }
 
+  if (!isRegistered) {
+    return <UserRegistration />;
+  }
+
   return (
     <BrowserRouter>
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1">
           <Routes>
-            <Route path="/" element={<Homepage />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<ProductList />} />
             <Route path="/orders" element={<OrderList />} />
@@ -54,26 +59,3 @@ function App() {
 }
 
 export default App;
-
-
-// <img src="/logo2.svg" alt="DFINITY logo" />
-// <br />
-// <br />
-// <form action="#" onSubmit={handleSubmit}>
-//   <label htmlFor="name">Enter your name: &nbsp;</label>
-//   <input id="name" alt="Name" type="text" />
-//   <button type="submit">Click Me!</button>
-// </form>
-// <section id="greeting">{greeting}</section>
-
-
-// const [greeting, setGreeting] = useState('');
-
-  // // function handleSubmit(event) {
-  // //   event.preventDefault();
-  // //   const name = event.target.elements.name.value;
-  // //   my_dapp_backend.greet(name).then((greeting) => {
-  // //     setGreeting(greeting);
-  // //   });
-  // //   return false;
-  // // }

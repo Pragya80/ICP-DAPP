@@ -340,6 +340,24 @@ pub fn get_product_events(product_id: String) -> Vec<ProductEvent> {
     })
 }
 
+//get all products
+#[ic_cdk::query]
+pub fn get_all_products() -> Vec<Product> {
+    PRODUCTS.with(|products| {
+        products.borrow()
+            .values()
+            .cloned()
+            .collect()
+    })
+}
+
+//get product by id
+#[ic_cdk::query]
+pub fn get_product(product_id: String) -> Option<Product> {
+    PRODUCTS.with(|products| {
+        products.borrow().get(&product_id).cloned()
+    })
+}
 
 // ===== DATA STRUCTURES =====
 // ===== STORAGE =====

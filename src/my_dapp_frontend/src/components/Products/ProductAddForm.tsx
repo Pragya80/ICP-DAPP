@@ -1,36 +1,51 @@
 import { useState } from 'react';
-import { Product } from '../../types';
+import { Product, CreateProductForm } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
 function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddProduct: (product: Product) => void }) {
-  const [formData, setFormData] = useState({
+  const { backendService } = useAuth();
+  const [formData, setFormData] = useState<CreateProductForm>({
     name: '',
     description: '',
-    price: '',
+    price: 0,
     category: '',
-    manufacturer: '',
-    specifications: ''
+    quantity: 0
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
     
-    const newProduct = {
-      id: Date.now(), // Simple ID generation
-      ...formData,
-      price: parseFloat(formData.price),
-      is_available: true,
-      created_at: new Date().toISOString(),
-      specifications: formData.specifications.split(',').map(spec => spec.trim()).filter(spec => spec)
-    };
-
-    onAddProduct(newProduct);
-    onClose();
+    try {
+      const result = await backendService.createProduct(
+        formData.name,
+        formData.description,
+        formData.price,
+        formData.quantity,
+        formData.category
+      );
+      
+      if ('Ok' in result) {
+        onAddProduct(result.Ok);
+        onClose();
+      } else {
+        setError(result.Err);
+      }
+    } catch (error) {
+      setError('Failed to create product');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: name === 'price' || name === 'quantity' ? parseFloat(value) || 0 : value
     });
   };
 
@@ -46,6 +61,12 @@ function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddP
             ✕
           </button>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -90,8 +111,23 @@ function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddP
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Category</label>
+            <label className="block text-sm font-medium mb-1">Quantity</label>
+            <input
+              type="number"
+              name="quantity"
+              value={formData.quantity}
+              onChange={handleChange}
+              required
+              min="1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="1"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
             <select
+              id="category"
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -107,42 +143,19 @@ function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddP
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Manufacturer</label>
-            <input
-              type="text"
-              name="manufacturer"
-              value={formData.manufacturer}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter manufacturer name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Specifications (comma-separated)</label>
-            <input
-              type="text"
-              name="specifications"
-              value={formData.specifications}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Color: Red, Size: Large, Weight: 500g"
-            />
-          </div>
-
           <div className="flex space-x-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+              disabled={isLoading}
+              className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              Add Product
+              {isLoading ? 'Creating...' : 'Add Product'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-400 transition-colors"
+              disabled={isLoading}
+              className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-400 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
