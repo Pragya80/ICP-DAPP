@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config({ path: '../../.env' });
 
@@ -36,14 +37,10 @@ export default defineConfig({
     setupFiles: 'src/setupTests.js',
   },
   resolve: {
-    alias: [
-      {
-        find: "declarations",
-        replacement: fileURLToPath(
-          new URL("../declarations", import.meta.url)
-        ),
-      },
-    ],
+    alias: {
+      declarations: fileURLToPath(new URL("../declarations", import.meta.url)),
+      '@shared': fileURLToPath(new URL("../shared", import.meta.url))
+    },
     dedupe: ['@dfinity/agent'],
   },
 });

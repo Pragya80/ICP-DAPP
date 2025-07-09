@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Product, UserRole } from '../../types';
+import type { Product, UserRole, ProductStatus } from '@shared/types';
+import { UserRoles, ProductStatuses, getRoleString, getStatusString } from '@shared/types';
 import { Plus, Package, Users, DollarSign, Calendar } from 'lucide-react';
 import ProductAddForm from './ProductAddForm';
 
@@ -32,15 +33,16 @@ const ProductList = () => {
     setShowAddForm(false);
   };
 
-  const getRoleIcon = (role: UserRole) => {
-    switch (role) {
-      case UserRole.Manufacturer:
+  const getRoleIcon = (role: UserRole | undefined) => {
+    const roleStr = getRoleString(role);
+    switch (roleStr) {
+      case 'Manufacturer':
         return <Package className="h-4 w-4 text-blue-600" />;
-      case UserRole.Distributor:
+      case 'Distributor':
         return <Users className="h-4 w-4 text-green-600" />;
-      case UserRole.Retailer:
+      case 'Retailer':
         return <Users className="h-4 w-4 text-purple-600" />;
-      case UserRole.Customer:
+      case 'Customer':
         return <Users className="h-4 w-4 text-orange-600" />;
       default:
         return <Users className="h-4 w-4 text-gray-600" />;
@@ -83,7 +85,7 @@ const ProductList = () => {
                 Manage your supply chain products
               </p>
             </div>
-            {user?.role === UserRole.Manufacturer && (
+            {getRoleString(user?.role) === 'Manufacturer' && (
               <button
                 onClick={() => setShowAddForm(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -131,7 +133,7 @@ const ProductList = () => {
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600">
-                      Created: {new Date(parseInt(product.created_at.toString()) / 1000000).toLocaleDateString()}
+                      Created: {new Date(Number(product.created_at)).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -149,7 +151,7 @@ const ProductList = () => {
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
               <p className="text-gray-600">
-                {user?.role === UserRole.Manufacturer 
+                {getRoleString(user?.role) === 'Manufacturer'
                   ? 'Start by adding your first product.'
                   : 'No products are available yet.'
                 }

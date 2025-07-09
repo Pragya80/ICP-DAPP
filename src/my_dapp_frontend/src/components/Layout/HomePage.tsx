@@ -89,7 +89,7 @@ const HomePage = () => {
               Welcome back, {user.name}!
             </h2>
             <p className="text-gray-600 mb-6">
-              You are registered as a <span className="font-semibold">{user.role}</span> in our supply chain network.
+              You are registered as a <span className="font-semibold">{Object.keys(user.role)[0]}</span> in our supply chain network.
             </p>
             <Link
               to="/dashboard"

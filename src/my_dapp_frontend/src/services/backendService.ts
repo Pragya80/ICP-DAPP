@@ -1,7 +1,8 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { AuthClient } from '@dfinity/auth-client';
 import { idlFactory } from '../../../declarations/my_dapp_backend/my_dapp_backend.did.js';
-import { User, UserRole, Product, ProductEvent } from '../types';
+import type { User, UserRole, Product, ProductEvent } from '@shared/types';
+import { getRoleString } from '@shared/types';
 
 class BackendService {
   private agent: HttpAgent | null = null;
@@ -10,21 +11,22 @@ class BackendService {
 
   async initialize(): Promise<boolean> {
     try {
-      // Initialize auth client
-      this.authClient = await AuthClient.create();
-      
-      // Create agent with identity
+      // For testing, use anonymous identity
       this.agent = new HttpAgent({
-        identity: this.authClient.getIdentity(),
         host: import.meta.env.MODE === 'production' 
           ? 'https://ic0.app' 
           : 'http://localhost:4943'
       });
 
+      // Fetch root key for local development
+      if (import.meta.env.MODE !== 'production') {
+        await this.agent.fetchRootKey();
+      }
+
       // Create actor
       const canisterId = import.meta.env.MODE === 'production'
         ? import.meta.env.CANISTER_ID_MY_DAPP_BACKEND
-        : import.meta.env.VITE_CANISTER_ID_MY_DAPP_BACKEND || 'u6s2n-gx777-77774-qaaba-cai';
+        : 'uxrrr-q7777-77774-qaaaq-cai'; // Updated to match deployed canister ID
 
       this.actor = Actor.createActor(idlFactory, {
         agent: this.agent,
@@ -38,10 +40,23 @@ class BackendService {
     }
   }
 
+  // Helper function to convert UserRole variant to Candid format
+  private convertRoleToCandid(role: UserRole): any {
+    const roleString = getRoleString(role);
+    return { [roleString]: null };
+  }
+
   // User Management
-  async registerUser(name: string, role: UserRole, email?: string, company?: string): Promise<any> {
+  async registerUser(name: string, role: UserRole, email: string, company: string): Promise<any> {
     try {
-      const result = await this.actor.register_user(name, role, email, company);
+      console.log('Registering user with:', { name, role, email, company });
+      
+      // Convert UserRole variant to Candid format
+      const candidRole = this.convertRoleToCandid(role);
+      console.log('Candid role format:', candidRole);
+      
+      const result = await this.actor.register_user(name, candidRole, email, company);
+      console.log('Registration result:', result);
       return result;
     } catch (error) {
       console.error('Failed to register user:', error);
@@ -61,7 +76,14 @@ class BackendService {
 
   async updateUserRole(role: UserRole): Promise<any> {
     try {
-      const result = await this.actor.update_user_role(role);
+      console.log('Updating user role to:', role);
+      
+      // Convert UserRole variant to Candid format
+      const candidRole = this.convertRoleToCandid(role);
+      console.log('Candid role format:', candidRole);
+      
+      const result = await this.actor.update_user_role(candidRole);
+      console.log('Role update result:', result);
       return result;
     } catch (error) {
       console.error('Failed to update user role:', error);

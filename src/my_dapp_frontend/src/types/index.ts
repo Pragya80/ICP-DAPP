@@ -1,64 +1,35 @@
-// ===== USER TYPES =====
+import type {
+  UserRole,
+  User,
+  ProductStatus,
+  Product,
+  ProductEvent,
+} from '../../../shared/types';
 
-export enum UserRole {
-  Manufacturer = 'Manufacturer',
-  Distributor = 'Distributor', 
-  Retailer = 'Retailer',
-  Customer = 'Customer'
-}
+import {
+  UserRoles,
+  ProductStatuses,
+  getRoleString,
+  getStatusString
+} from '../../../shared/types';
 
-export interface User {
-  user_principal: string;
-  name: string;
-  role: UserRole;
-  email?: string;
-  company?: string;
-  is_active: boolean;
-  created_at: number;
-}
+// Re-export shared types
+export type {
+  UserRole,
+  User,
+  ProductStatus,
+  Product,
+  ProductEvent,
+};
 
-// ===== PRODUCT TYPES =====
+export {
+  UserRoles,
+  ProductStatuses,
+  getRoleString,
+  getStatusString
+};
 
-export enum ProductStatus {
-  Available = 'Available',
-  OutOfStock = 'OutOfStock',
-  Discontinued = 'Discontinued'
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  manufacturer: string;
-  current_owner: string;
-  price: number;
-  quantity: number;
-  status: ProductStatus;
-  category: string;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface ProductEvent {
-  product_id: string;
-  event_type: string;
-  description: string;
-  from_user: string;
-  to_user: string;
-  timestamp: number;
-}
-
-// ===== INVENTORY TYPES =====
-
-export interface Inventory {
-  product_id: string;
-  quantity: number;
-  location: string;
-  owner: string; // user id
-  last_updated: number;
-}
-
-// ===== ORDER TYPES =====
+// ===== FRONTEND-SPECIFIC TYPES =====
 
 export enum OrderStatus {
   PENDING = 'pending',

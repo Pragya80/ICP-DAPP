@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { Product, CreateProductForm } from '../../types';
+import type { Product } from '@shared/types';
 import { useAuth } from '../../contexts/AuthContext';
+
+interface CreateProductForm {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  quantity: number;
+}
 
 function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddProduct: (product: Product) => void }) {
   const { backendService } = useAuth();

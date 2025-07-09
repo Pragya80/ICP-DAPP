@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthClient } from '@dfinity/auth-client';
 import backendService from '../services/backendService';
-import { User, UserRole } from '../types';
+import type { User, UserRole } from '@shared/types';
 
 interface AuthContextType {
   user: User | null;
@@ -10,15 +10,15 @@ interface AuthContextType {
   isLoading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
-  registerUser: (name: string, role: UserRole, email?: string, company?: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  registerUser: (name: string, role: UserRole, email: string, company: string) => Promise<{ success: boolean; user?: User; error?: string }>;
   updateUserRole: (newRole: UserRole) => Promise<{ success: boolean; user?: User; error?: string }>;
   backendService: typeof backendService;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Use mainnet Internet Identity for now (more reliable for development)
-const identityProvider = 'https://identity.ic0.app';
+// Use local Internet Identity for development
+const identityProvider = 'http://127.0.0.1:4943/?canisterId=uxrrr-q7777-77774-qaaaq-cai';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -40,34 +40,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const initializeAuth = async () => {
     try {
+      // For testing, skip authentication and go directly to registration
       const authClient = await AuthClient.create();
-      const isAuthenticated = await authClient.isAuthenticated();
-
-      let user = null;
-      let isRegistered = false;
-
-      if (isAuthenticated) {
-        // Initialize backend service
-        await backendService.initialize();
-        
-        // Try to get current user from backend
-        try {
-          const backendUser = await backendService.getCurrentUser();
-          if (backendUser.length > 0) {
-            user = backendUser[0];
-            isRegistered = true;
-          }
-        } catch (error) {
-          console.log('User not registered in backend yet');
-        }
-      }
-
+      
+      // Initialize backend service
+      await backendService.initialize();
+      
       setState({
         authClient,
-        isAuthenticated,
-        user,
+        isAuthenticated: true, // Skip authentication for testing
+        user: null,
         isLoading: false,
-        isRegistered
+        isRegistered: false // Start with not registered
       });
     } catch (error) {
       console.error('Failed to initialize auth client:', error);
@@ -81,52 +65,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      await state.authClient.login({
-        identityProvider,
-        onSuccess: async () => {
-          // Initialize backend service after login
-          await backendService.initialize();
-          
-          // Check if user is registered in backend
-          try {
-            const backendUser = await backendService.getCurrentUser();
-            if (backendUser.length > 0) {
-              setState(prev => ({
-                ...prev,
-                isAuthenticated: true,
-                user: backendUser[0],
-                isRegistered: true,
-                isLoading: false
-              }));
-            } else {
-              setState(prev => ({
-                ...prev,
-                isAuthenticated: true,
-                isRegistered: false,
-                isLoading: false
-              }));
-            }
-          } catch (error) {
-            setState(prev => ({
-              ...prev,
-              isAuthenticated: true,
-              isRegistered: false,
-              isLoading: false
-            }));
-          }
-        }
-      });
+      // For testing, skip actual login and go directly to registration
+      await backendService.initialize();
+      
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        isRegistered: false, // Go to registration after login
+        isLoading: false
+      }));
     } catch (error) {
       console.error('Login failed:', error);
       setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
-  const registerUser = async (name: string, role: UserRole, email?: string, company?: string) => {
+  const registerUser = async (name: string, role: UserRole, email: string, company: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
+      console.log('AuthContext: Registering user with:', { name, role, email, company });
       const result = await backendService.registerUser(name, role, email, company);
+      console.log('AuthContext: Registration result:', result);
       
       if ('Ok' in result) {
         setState(prev => ({
@@ -141,7 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: result.Err };
       }
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('AuthContext: Registration failed:', error);
       setState(prev => ({ ...prev, isLoading: false }));
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }

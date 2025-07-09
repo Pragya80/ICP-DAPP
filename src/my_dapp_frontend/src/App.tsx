@@ -10,7 +10,7 @@ import Login from './components/Auth/Login';
 import UserRegistration from './components/Auth/UserRegistration';
 
 function AppContent() {
-  const { isAuthenticated, isLoading, user, isRegistered } = useAuth();
+  const { isAuthenticated, isLoading, isRegistered } = useAuth();
 
   if (isLoading) {
     return (
@@ -23,6 +23,7 @@ function AppContent() {
     );
   }
 
+  // For login and registration, render without layout
   if (!isAuthenticated) {
     return <Login />;
   }
@@ -31,31 +32,30 @@ function AppContent() {
     return <UserRegistration />;
   }
 
+  // For authenticated and registered users, show full layout
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<ProductList />} />
+          <Route path="/orders" element={<OrderList />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<ProductList />} />
-            <Route path="/orders" element={<OrderList />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </BrowserRouter>
   );
 }
-
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
-
-export default App;

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Package, DollarSign, Hash, Tag, FileText } from 'lucide-react';
-import { Product, UserRole } from '../../types';
+import type { Product, UserRole } from '@shared/types';
+import { getRoleString } from '@shared/types';
 
 interface ProductCreateFormProps {
   onProductCreated?: (product: Product) => void;
@@ -72,7 +73,7 @@ const ProductCreateForm = ({ onProductCreated }: ProductCreateFormProps) => {
   };
 
   // Only show for Manufacturers
-  if (user?.role !== UserRole.Manufacturer) {
+  if (getRoleString(user?.role) !== 'Manufacturer') {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
         <p className="text-yellow-800">

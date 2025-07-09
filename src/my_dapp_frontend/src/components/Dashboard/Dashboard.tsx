@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserRole } from '../../types';
+import type { UserRole } from '@shared/types';
+import { UserRoles, getRoleString } from '@shared/types';
 import { 
   Package, 
   Users, 
@@ -43,30 +44,37 @@ const Dashboard = () => {
     }
   };
 
-  const getRoleIcon = (role: UserRole) => {
-    switch (role) {
-      case UserRole.Manufacturer:
+  const getRoleString = (role: UserRole | undefined): string => {
+    if (!role) return 'Unknown Role';
+    return Object.keys(role)[0] || 'Unknown Role';
+  };
+
+  const getRoleIcon = (role: UserRole | undefined) => {
+    const roleStr = getRoleString(role);
+    switch (roleStr) {
+      case 'Manufacturer':
         return <Factory className="h-8 w-8 text-blue-600" />;
-      case UserRole.Distributor:
+      case 'Distributor':
         return <Truck className="h-8 w-8 text-green-600" />;
-      case UserRole.Retailer:
+      case 'Retailer':
         return <ShoppingCart className="h-8 w-8 text-purple-600" />;
-      case UserRole.Customer:
+      case 'Customer':
         return <User className="h-8 w-8 text-orange-600" />;
       default:
         return <User className="h-8 w-8 text-gray-600" />;
     }
   };
 
-  const getRoleColor = (role: UserRole) => {
-    switch (role) {
-      case UserRole.Manufacturer:
+  const getRoleColor = (role: UserRole | undefined) => {
+    const roleStr = getRoleString(role);
+    switch (roleStr) {
+      case 'Manufacturer':
         return 'bg-blue-100 text-blue-800';
-      case UserRole.Distributor:
+      case 'Distributor':
         return 'bg-green-100 text-green-800';
-      case UserRole.Retailer:
+      case 'Retailer':
         return 'bg-purple-100 text-purple-800';
-      case UserRole.Customer:
+      case 'Customer':
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -98,13 +106,13 @@ const Dashboard = () => {
         {/* User Info Card */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-full ${getRoleColor(user?.role || UserRole.Customer)}`}>
-              {getRoleIcon(user?.role || UserRole.Customer)}
+            <div className={`p-3 rounded-full ${getRoleColor(user?.role)}`}>
+              {getRoleIcon(user?.role)}
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">{user?.name}</h2>
-              <p className="text-gray-600">{user?.role}</p>
-              <p className="text-sm text-gray-500">User ID: {user?.user_principal?.slice(0, 8)}...</p>
+              <p className="text-gray-600">{getRoleString(user?.role)}</p>
+              <p className="text-sm text-gray-500">User ID: {user?.user_principal?.toString().slice(0, 8)}...</p>
             </div>
           </div>
         </div>

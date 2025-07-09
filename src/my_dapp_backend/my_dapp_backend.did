@@ -9,8 +9,8 @@ type User = record {
     user_principal: principal;
     name: text;
     role: UserRole;
-    email: opt text;
-    company: opt text;
+    email: text;
+    company: text;
     is_active: bool;
     created_at: nat64;
 };
@@ -45,7 +45,7 @@ type ProductEvent = record {
 };
 
 service : {
-    register_user : (text, UserRole, opt text, opt text) -> (variant { Ok : User; Err : text });
+    register_user : (text, UserRole, text, text) -> (variant { Ok : User; Err : text });
     get_user : (principal) -> (opt User) query;
     get_current_user : () -> (opt User) query;
     update_user_role : (UserRole) -> (variant { Ok : User; Err : text });

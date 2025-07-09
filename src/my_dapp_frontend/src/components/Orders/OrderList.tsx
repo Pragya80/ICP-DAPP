@@ -123,10 +123,10 @@ const OrderList = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-500">
-                        {new Date(parseInt(event.timestamp.toString()) / 1000000).toLocaleString()}
+                        {new Date(Number(event.timestamp)).toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-400">
-                        From: {event.from_user.slice(0, 8)}...
+                        From: {event.from_user.toString().slice(0, 8)}...
                       </p>
                     </div>
                   </div>

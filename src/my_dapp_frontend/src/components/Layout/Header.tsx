@@ -26,30 +26,38 @@ const Header = () => {
     { name: 'Orders', href: '/orders', icon: Users },
   ];
 
-  const getRoleIcon = (role: UserRole | undefined): JSX.Element => {
-    switch (role) {
-      case UserRole.Manufacturer:
+  const getRoleString = (role: any): string => {
+    if (!role) return 'Unknown Role';
+    // Handle Candid variant format
+    return Object.keys(role)[0] || 'Unknown Role';
+  };
+
+  const getRoleIcon = (role: any): JSX.Element => {
+    const roleStr = getRoleString(role);
+    switch (roleStr) {
+      case 'Manufacturer':
         return <Factory className="h-5 w-5" />;
-      case UserRole.Distributor:
+      case 'Distributor':
         return <Truck className="h-5 w-5" />;
-      case UserRole.Retailer:
+      case 'Retailer':
         return <ShoppingCart className="h-5 w-5" />;
-      case UserRole.Customer:
+      case 'Customer':
         return <User className="h-5 w-5" />;
       default:
         return <User className="h-5 w-5" />;
     }
   };
 
-  const getRoleColor = (role: UserRole | undefined): string => {
-    switch (role) {
-      case UserRole.Manufacturer:
+  const getRoleColor = (role: any): string => {
+    const roleStr = getRoleString(role);
+    switch (roleStr) {
+      case 'Manufacturer':
         return 'bg-blue-100 text-blue-800';
-      case UserRole.Distributor:
+      case 'Distributor':
         return 'bg-green-100 text-green-800';
-      case UserRole.Retailer:
+      case 'Retailer':
         return 'bg-purple-100 text-purple-800';
-      case UserRole.Customer:
+      case 'Customer':
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -101,12 +109,12 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             {/* User Info */}
             <div className="hidden md:flex items-center space-x-3">
-              <div className={`p-2 rounded-full ${getRoleColor(user?.role || UserRole.Customer)}`}>
-                {getRoleIcon(user?.role || UserRole.Customer)}
+              <div className={`p-2 rounded-full ${getRoleColor(user?.role)}`}>
+                {getRoleIcon(user?.role)}
               </div>
               <div className="text-sm">
-                <p className="font-medium text-gray-900">{user?.name}</p>
-                <p className="text-gray-500">{user?.role}</p>
+                <p className="font-medium text-gray-900">{user?.name || 'Guest'}</p>
+                <p className="text-gray-500">{getRoleString(user?.role)}</p>
               </div>
             </div>
 
@@ -161,12 +169,12 @@ const Header = () => {
               {/* Mobile User Info */}
               <div className="px-3 py-2 border-t border-gray-200 mt-4">
                 <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-full ${getRoleColor(user?.role || UserRole.Customer)}`}>
-                    {getRoleIcon(user?.role || UserRole.Customer)}
+                  <div className={`p-2 rounded-full ${getRoleColor(user?.role)}`}>
+                    {getRoleIcon(user?.role)}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-                    <p className="text-xs text-gray-500">{user?.role}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.name || 'Guest'}</p>
+                    <p className="text-xs text-gray-500">{getRoleString(user?.role)}</p>
                   </div>
                 </div>
                 <button
