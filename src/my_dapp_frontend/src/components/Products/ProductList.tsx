@@ -49,8 +49,8 @@ const ProductList = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (statusStr: string) => {
+    switch (statusStr) {
       case 'Available':
         return 'bg-green-100 text-green-800';
       case 'OutOfStock':
@@ -114,8 +114,8 @@ const ProductList = () => {
                     <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
                     <p className="text-sm text-gray-600">{product.description}</p>
                   </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(product.status)}`}>
-                    {product.status}
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getStatusString(product.status))}`}>
+                    {getStatusString(product.status)}
                   </div>
                 </div>
 
