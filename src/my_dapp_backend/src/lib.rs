@@ -1,11 +1,10 @@
 use candid:: {CandidType, Deserialize, Principal};
-use ic_cdk::api::caller;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
 //defining data structures sabke
 //user role
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize, Clone, PartialEq)]
 pub enum UserRole{
     Manufacturer,
     Distributor,
@@ -76,10 +75,10 @@ fn get_current_timestamp() -> u64
 }
 
 fn generate_id() -> String{
-    let timestamp = get_current_timestamp();
-    let random = ic_cdk::api::caller().as_slice();
+    let caller = ic_cdk::api::caller();
+    let random = caller.as_slice();
     //xor karke id generate kar rahe hai
-    format!("{}{:x}",timestamp,random.iter().take(4).fold(0u8, |acc, &x| acc ^ x))
+    format!("{}{:x}",get_current_timestamp(),random.iter().take(4).fold(0u8, |acc, &x| acc ^ x))
 }
 
 fn get_caller() -> Principal {
@@ -189,7 +188,7 @@ pub fn create_product(
         let product_id = generate_id();
         let product = Product{
             id:product_id.clone(),
-            name,
+            name:name.clone(),
             description,
             manufacturer:caller,
             current_owner: caller, // Set current_owner to manufacturer
@@ -284,7 +283,7 @@ pub fn transfer_product(
 pub fn sell_product(
     product_id: String,
     customer: Principal,
-    price: f64,
+    _price: f64,
     quantity: u32,
     description: String,
 ) -> Result<Product, String> {
