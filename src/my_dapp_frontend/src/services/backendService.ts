@@ -1,172 +1,220 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-import { AuthClient } from '@dfinity/auth-client';
-import { idlFactory } from '../../../declarations/my_dapp_backend/my_dapp_backend.did.js';
-import type { User, UserRole, Product, ProductEvent } from '@shared/types';
-import { getRoleString } from '@shared/types';
+import { Principal } from '@dfinity/principal';
+import { idlFactory as backendIdlFactory } from '../../../declarations/my_dapp_backend/my_dapp_backend.did.js';
+import type { _SERVICE } from '../../../declarations/my_dapp_backend/my_dapp_backend.did';
+import type { 
+  Product as BackendProduct, 
+  User as BackendUser, 
+  ProductEvent as BackendProductEvent,
+  UserRole as BackendUserRole,
+  ProductStatus as BackendProductStatus
+} from '../../../declarations/my_dapp_backend/my_dapp_backend.did';
+import type { User, Product, UserRole, ProductStatus } from '@shared/types';
+
+// Update canister ID to match your deployed backend
+const CANISTER_ID = 'uxrrr-q7777-77774-qaaaq-cai';
 
 class BackendService {
-  private agent: HttpAgent | null = null;
-  private actor: any = null;
-  private authClient: AuthClient | null = null;
+  private actor: _SERVICE | null = null;
 
-  async initialize(): Promise<boolean> {
-    try {
-      // For testing, use anonymous identity
-      this.agent = new HttpAgent({
-        host: import.meta.env.MODE === 'production' 
-          ? 'https://ic0.app' 
-          : 'http://localhost:4943'
-      });
+  async initializeActor() {
+    if (!this.actor) {
+      try {
+        const agent = new HttpAgent({ 
+          host: 'http://127.0.0.1:4943'
+        });
+        
+        // Fetch root key for local development
+        await agent.fetchRootKey();
 
-      // Fetch root key for local development
-      if (import.meta.env.MODE !== 'production') {
-        await this.agent.fetchRootKey();
+        this.actor = Actor.createActor(backendIdlFactory, {
+          agent,
+          canisterId: CANISTER_ID,
+        });
+        
+        console.log('Backend actor initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize backend actor:', error);
+        throw error;
       }
-
-      // Create actor
-      const canisterId = import.meta.env.MODE === 'production'
-        ? import.meta.env.CANISTER_ID_MY_DAPP_BACKEND
-        : 'uxrrr-q7777-77774-qaaaq-cai'; // Updated to match deployed canister ID
-
-      this.actor = Actor.createActor(idlFactory, {
-        agent: this.agent,
-        canisterId: canisterId
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize backend service:', error);
-      return false;
     }
+    return this.actor;
   }
 
-  // Helper function to convert UserRole variant to Candid format
-  private convertRoleToCandid(role: UserRole): any {
-    const roleString = getRoleString(role);
-    return { [roleString]: null };
+  // Type conversion helpers
+  private convertBackendUserToFrontend(backendUser: BackendUser): User {
+    return {
+      user_principal: backendUser.user_principal.toString(),
+      name: backendUser.name,
+      role: backendUser.role,
+      created_at: backendUser.created_at,
+      email: backendUser.email,
+      company: backendUser.company,
+      is_active: backendUser.is_active
+    };
   }
 
-  // User Management
-  async registerUser(name: string, role: UserRole, email: string, company: string): Promise<any> {
+  private convertBackendProductToFrontend(backendProduct: BackendProduct): Product {
+    return {
+      id: backendProduct.id,
+      name: backendProduct.name,
+      description: backendProduct.description,
+      price: backendProduct.price,
+      quantity: backendProduct.quantity,
+      category: backendProduct.category,
+      status: backendProduct.status,
+      manufacturer: backendProduct.manufacturer.toString(),
+      current_owner: backendProduct.current_owner.toString(),
+      created_at: backendProduct.created_at,
+      updated_at: backendProduct.updated_at
+    };
+  }
+
+  async getCurrentUser(): Promise<User | null> {
     try {
-      console.log('Registering user with:', { name, role, email, company });
+      const actor = await this.initializeActor();
+      const result = await actor.get_current_user();
       
-      // Convert UserRole variant to Candid format
-      const candidRole = this.convertRoleToCandid(role);
-      console.log('Candid role format:', candidRole);
-      
-      const result = await this.actor.register_user(name, candidRole, email, company);
-      console.log('Registration result:', result);
-      return result;
-    } catch (error) {
-      console.error('Failed to register user:', error);
-      throw error;
-    }
-  }
-
-  async getCurrentUser(): Promise<User[]> {
-    try {
-      const result = await this.actor.get_current_user();
-      return result;
+      if (result && result.length > 0 && result[0]) {
+        return this.convertBackendUserToFrontend(result[0]);
+      } else {
+        return null;
+      }
     } catch (error) {
       console.error('Failed to get current user:', error);
-      throw error;
+      return null;
     }
   }
 
-  async updateUserRole(role: UserRole): Promise<any> {
+  async registerUser(name: string, role: UserRole, email: string = '', company: string = ''): Promise<{ Ok: User } | { Err: string }> {
     try {
-      console.log('Updating user role to:', role);
+      const actor = await this.initializeActor();
+      const result = await actor.register_user(name, role as BackendUserRole, email, company);
       
-      // Convert UserRole variant to Candid format
-      const candidRole = this.convertRoleToCandid(role);
-      console.log('Candid role format:', candidRole);
-      
-      const result = await this.actor.update_user_role(candidRole);
-      console.log('Role update result:', result);
-      return result;
+      if ('Ok' in result) {
+        return { Ok: this.convertBackendUserToFrontend(result.Ok) };
+      } else {
+        return result;
+      }
     } catch (error) {
-      console.error('Failed to update user role:', error);
-      throw error;
+      console.error('Failed to register user:', error);
+      return { Err: 'Failed to register user' };
     }
   }
 
-  // Product Management
-  async createProduct(name: string, description: string, price: number, quantity: number, category: string): Promise<any> {
+  async createProduct(
+    name: string,
+    description: string,
+    price: number,
+    quantity: number,
+    category: string
+  ): Promise<{ Ok: Product } | { Err: string }> {
     try {
-      const result = await this.actor.create_product(name, description, price, quantity, category);
-      return result;
+      const actor = await this.initializeActor();
+      const result = await actor.create_product(name, description, price, quantity, category);
+      
+      if ('Ok' in result) {
+        return { Ok: this.convertBackendProductToFrontend(result.Ok) };
+      } else {
+        return result;
+      }
     } catch (error) {
       console.error('Failed to create product:', error);
-      throw error;
-    }
-  }
-
-  async transferProduct(productId: string, toUser: string, description: string): Promise<any> {
-    try {
-      const result = await this.actor.transfer_product(productId, toUser, description);
-      return result;
-    } catch (error) {
-      console.error('Failed to transfer product:', error);
-      throw error;
-    }
-  }
-
-  async sellProduct(productId: string, customer: string, price: number, quantity: number, description: string): Promise<any> {
-    try {
-      const result = await this.actor.sell_product(productId, customer, price, quantity, description);
-      return result;
-    } catch (error) {
-      console.error('Failed to sell product:', error);
-      throw error;
-    }
-  }
-
-  async getProductEvents(productId: string): Promise<ProductEvent[]> {
-    try {
-      const result = await this.actor.get_product_events(productId);
-      return result;
-    } catch (error) {
-      console.error('Failed to get product events:', error);
-      throw error;
+      return { Err: 'Failed to create product' };
     }
   }
 
   async getAllProducts(): Promise<Product[]> {
     try {
-      const result = await this.actor.get_all_products();
-      return result;
+      const actor = await this.initializeActor();
+      const products = await actor.get_all_products();
+      return products.map(product => this.convertBackendProductToFrontend(product));
     } catch (error) {
-      console.error('Failed to get all products:', error);
-      throw error;
+      console.error('Failed to get products:', error);
+      return [];
     }
   }
 
-  async getProduct(productId: string): Promise<Product | null> {
+  async getProductById(id: string): Promise<Product | null> {
     try {
-      const result = await this.actor.get_product(productId);
-      return result;
+      const actor = await this.initializeActor();
+      const result = await actor.get_product(id);
+      
+      if (result && result.length > 0 && result[0]) {
+        return this.convertBackendProductToFrontend(result[0]);
+      } else {
+        return null;
+      }
     } catch (error) {
       console.error('Failed to get product:', error);
-      throw error;
+      return null;
     }
   }
 
-  // Check if user is authenticated
-  async isAuthenticated(): Promise<boolean> {
-    return this.authClient ? await this.authClient.isAuthenticated() : false;
+  async transferProduct(
+    productId: string,
+    toPrincipal: string,
+    description: string
+  ): Promise<{ Ok: Product } | { Err: string }> {
+    try {
+      const actor = await this.initializeActor();
+      const toPrincipalObj = Principal.fromText(toPrincipal);
+      const result = await actor.transfer_product(productId, toPrincipalObj, description);
+      
+      if ('Ok' in result) {
+        return { Ok: this.convertBackendProductToFrontend(result.Ok) };
+      } else {
+        return result;
+      }
+    } catch (error) {
+      console.error('Failed to transfer product:', error);
+      return { Err: 'Failed to transfer product. Please check the principal ID and try again.' };
+    }
   }
 
-  // Get current principal
-  getPrincipal(): string | null {
-    if (this.authClient) {
-      const identity = this.authClient.getIdentity();
-      return identity.getPrincipal().toString();
+  async getProductEvents(productId: string): Promise<BackendProductEvent[]> {
+    try {
+      const actor = await this.initializeActor();
+      const events = await actor.get_product_events(productId);
+      return events;
+    } catch (error) {
+      console.error('Failed to get product events:', error);
+      return [];
     }
-    return null;
+  }
+
+  async sellProduct(
+    productId: string,
+    customer: string,
+    price: number,
+    quantity: number,
+    description: string
+  ): Promise<{ Ok: Product } | { Err: string }> {
+    try {
+      const actor = await this.initializeActor();
+      const customerPrincipal = Principal.fromText(customer);
+      const result = await actor.sell_product(productId, customerPrincipal, price, quantity, description);
+      
+      if ('Ok' in result) {
+        return { Ok: this.convertBackendProductToFrontend(result.Ok) };
+      } else {
+        return result;
+      }
+    } catch (error) {
+      console.error('Failed to sell product:', error);
+      return { Err: 'Failed to sell product' };
+    }
+  }
+
+  async getUserPrincipal(): Promise<string> {
+    try {
+      // For now, return a placeholder since we don't have a direct method
+      return 'anonymous';
+    } catch (error) {
+      console.error('Failed to get user principal:', error);
+      return '';
+    }
   }
 }
 
-// Create singleton instance
-const backendService = new BackendService();
-export default backendService; 
+export default new BackendService(); 

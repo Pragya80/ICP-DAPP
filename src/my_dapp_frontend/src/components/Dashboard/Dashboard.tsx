@@ -10,7 +10,9 @@ import {
   Factory,
   Truck,
   ShoppingCart,
-  User
+  User,
+  Copy,
+  Check
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -22,6 +24,7 @@ const Dashboard = () => {
     recentActivity: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [copiedPrincipal, setCopiedPrincipal] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -41,6 +44,27 @@ const Dashboard = () => {
       console.error('Failed to load dashboard data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const copyPrincipalId = async () => {
+    const principalId = user?.user_principal?.toString();
+    if (!principalId) return;
+
+    try {
+      await navigator.clipboard.writeText(principalId);
+      setCopiedPrincipal(true);
+      setTimeout(() => setCopiedPrincipal(false), 2000);
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = principalId;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedPrincipal(true);
+      setTimeout(() => setCopiedPrincipal(false), 2000);
     }
   };
 
@@ -109,11 +133,40 @@ const Dashboard = () => {
             <div className={`p-3 rounded-full ${getRoleColor(user?.role)}`}>
               {getRoleIcon(user?.role)}
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900">{user?.name}</h2>
               <p className="text-gray-600">{getRoleString(user?.role)}</p>
-              <p className="text-sm text-gray-500">User ID: {user?.user_principal?.toString().slice(0, 8)}...</p>
+              <div className="flex items-center space-x-2 mt-1">
+                <p className="text-sm text-gray-500">
+                  Principal ID: {user?.user_principal?.toString().slice(0, 8)}...
+                </p>
+                <button
+                  onClick={copyPrincipalId}
+                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  title="Copy full principal ID"
+                >
+                  {copiedPrincipal ? (
+                    <>
+                      <Check className="h-3 w-3 text-green-600" />
+                      <span className="text-green-600">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+          </div>
+          
+          {/* Principal ID Info */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Share your Principal ID:</strong> Other users need your Principal ID to transfer products to you. 
+              Use the copy button above to share it easily.
+            </p>
           </div>
         </div>
 

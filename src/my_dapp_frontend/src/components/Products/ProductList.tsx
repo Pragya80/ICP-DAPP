@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Product, UserRole, ProductStatus } from '@shared/types';
 import { UserRoles, ProductStatuses, getRoleString, getStatusString } from '@shared/types';
-import { Plus, Package, Users, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Package, Users, DollarSign, Calendar, ArrowRight, Copy, Check } from 'lucide-react';
 import ProductAddForm from './ProductAddForm';
+import ProductTransferForm from './ProductTransferForm';
 
 const ProductList = () => {
   const { user, backendService } = useAuth();
@@ -11,6 +12,9 @@ const ProductList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showTransferForm, setShowTransferForm] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -31,6 +35,39 @@ const ProductList = () => {
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [newProduct, ...prev]);
     setShowAddForm(false);
+  };
+
+  const handleTransferProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setShowTransferForm(true);
+  };
+
+  const handleTransferSuccess = (updatedProduct: Product) => {
+    setProducts(prev => 
+      prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    );
+    setShowTransferForm(false);
+    setSelectedProduct(null);
+    // Reload products to get updated data
+    loadProducts();
+  };
+
+  const copyProductId = async (productId: string) => {
+    try {
+      await navigator.clipboard.writeText(productId);
+      setCopiedId(productId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = productId;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedId(productId);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   const getRoleIcon = (role: UserRole | undefined) => {
@@ -60,6 +97,16 @@ const ProductList = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const canTransferProduct = (product: Product) => {
+    const userRole = getRoleString(user?.role);
+    const userPrincipal = user?.user_principal?.toString();
+    const productOwner = product.current_owner?.toString();
+    
+    // User must be the current owner and have transfer permissions
+    return userPrincipal === productOwner && 
+           ['Manufacturer', 'Distributor', 'Retailer'].includes(userRole);
   };
 
   if (isLoading) {
@@ -138,12 +185,50 @@ const ProductList = () => {
                   </div>
                 </div>
 
+                {/* Product ID with Copy Button */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="text-xs text-gray-500">Category: {product.category}</span>
-                    <span className="text-xs text-gray-500">ID: {product.id.slice(0, 8)}...</span>
+                    <span className="text-xs text-gray-500">
+                      Owner: {product.current_owner?.toString().slice(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      ID: {product.id.slice(0, 12)}...
+                    </span>
+                    <button
+                      onClick={() => copyProductId(product.id)}
+                      className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                      title="Copy full product ID"
+                    >
+                      {copiedId === product.id ? (
+                        <>
+                          <Check className="h-3 w-3 text-green-600" />
+                          <span className="text-green-600">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>Copy ID</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
+
+                {/* Transfer Button */}
+                {canTransferProduct(product) && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => handleTransferProduct(product)}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      <span>Transfer Product</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -166,6 +251,18 @@ const ProductList = () => {
         <ProductAddForm
           onClose={() => setShowAddForm(false)}
           onAddProduct={handleAddProduct}
+        />
+      )}
+
+      {/* Transfer Product Modal */}
+      {showTransferForm && selectedProduct && (
+        <ProductTransferForm
+          product={selectedProduct}
+          onClose={() => {
+            setShowTransferForm(false);
+            setSelectedProduct(null);
+          }}
+          onTransferSuccess={handleTransferSuccess}
         />
       )}
     </div>
