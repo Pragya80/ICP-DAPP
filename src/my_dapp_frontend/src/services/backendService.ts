@@ -172,11 +172,17 @@ class BackendService {
     }
   }
 
-  async getProductEvents(productId: string): Promise<BackendProductEvent[]> {
+  async getProductEvents(productId: string): Promise<any[]> {
     try {
       const actor = await this.initializeActor();
       const events = await actor.get_product_events(productId);
-      return events;
+      
+      // Convert backend events to frontend format
+      return events.map(event => ({
+        ...event,
+        from_user: event.from_user.toString(),
+        to_user: event.to_user.toString()
+      }));
     } catch (error) {
       console.error('Failed to get product events:', error);
       return [];

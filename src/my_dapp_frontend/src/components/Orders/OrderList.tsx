@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Activity, Calendar, User, ArrowRight } from 'lucide-react';
-import { ProductEvent } from '../../types';
+import type { ProductEvent } from '@shared/types';
 
 const OrderList = () => {
   const { user, backendService } = useAuth();
@@ -126,7 +126,7 @@ const OrderList = () => {
                         {new Date(Number(event.timestamp)).toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-400">
-                        From: {event.from_user.toString().slice(0, 8)}...
+                        From: {event.from_user.slice(0, 8)}...
                       </p>
                     </div>
                   </div>
