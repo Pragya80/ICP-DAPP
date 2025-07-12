@@ -28,7 +28,7 @@ function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddP
     setError('');
     
     try {
-      const result = await backendService.createProduct(
+      const product = await backendService.createProduct(
         formData.name,
         formData.description,
         formData.price,
@@ -36,12 +36,8 @@ function AddProductForm({ onClose, onAddProduct }: { onClose: () => void, onAddP
         formData.category
       );
       
-      if ('Ok' in result) {
-        onAddProduct(result.Ok);
-        onClose();
-      } else {
-        setError(result.Err);
-      }
+      onAddProduct(product);
+      onClose();
     } catch (error) {
       setError('Failed to create product');
     } finally {

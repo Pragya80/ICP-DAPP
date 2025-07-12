@@ -41,7 +41,7 @@ const ProductCreateForm = ({ onProductCreated }: ProductCreateFormProps) => {
     setIsLoading(true);
 
     try {
-      const result = await backendService.createProduct(
+      const product = await backendService.createProduct(
         formData.name,
         formData.description,
         parseFloat(formData.price),
@@ -49,14 +49,10 @@ const ProductCreateForm = ({ onProductCreated }: ProductCreateFormProps) => {
         formData.category
       );
 
-      if ('Ok' in result) {
-        setSuccess('Product created successfully!');
-        setFormData({ name: '', description: '', price: '', quantity: '', category: '' });
-        if (onProductCreated) {
-          onProductCreated(result.Ok);
-        }
-      } else {
-        setError(result.Err);
+      setSuccess('Product created successfully!');
+      setFormData({ name: '', description: '', price: '', quantity: '', category: '' });
+      if (onProductCreated) {
+        onProductCreated(product);
       }
     } catch (error) {
       setError('Failed to create product. Please try again.');

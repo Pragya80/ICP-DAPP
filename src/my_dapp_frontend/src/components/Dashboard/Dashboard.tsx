@@ -1,115 +1,35 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import type { UserRole } from '@shared/types';
-import { UserRoles, getRoleString } from '@shared/types';
-import { 
-  Package, 
-  Users, 
-  DollarSign, 
-  TrendingUp,
-  Factory,
-  Truck,
-  ShoppingCart,
-  User,
-  Copy,
-  Check
-} from 'lucide-react';
+import { getRoleString } from '@shared/types';
 
-const Dashboard = () => {
-  const { user, backendService } = useAuth();
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalUsers: 0,
-    totalRevenue: 0,
-    recentActivity: 0
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [copiedPrincipal, setCopiedPrincipal] = useState(false);
+const Dashboard: React.FC = () => {
+  const { user, principalId, testMode, switchTestPrincipal } = useAuth();
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const testUsers = [
+    { role: 'manufacturer', name: 'Keerth Manufacturer', company: 'ABC Manufacturing Co.' },
+    { role: 'manufacturer', name: 'Anku Manufacturer', company: 'xyz Manufacturing Co.' },
+    { role: 'distributor', name: 'Pragya Distributor', company: 'XYZ Distribution Ltd.' },
+    { role: 'retailer', name: 'Vinit Retailer', company: 'QuickMart Stores' },
+    { role: 'retailer', name: 'Vedant Retailer', company: 'QuickMart Stores' },
+    { role: 'customer', name: 'Sharma ji Customer', company: 'Individual' }
+  ];
 
-  const loadDashboardData = async () => {
-    setIsLoading(true);
-    try {
-      // For MVP, we'll use mock data
-      setStats({
-        totalProducts: 2,
-        totalUsers: 1,
-        totalRevenue: 1999.98,
-        recentActivity: 3
-      });
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSwitchUser = (role: string) => {
+    console.log('Switching to role:', role);
+    switchTestPrincipal(role as any);
   };
 
-  const copyPrincipalId = async () => {
-    const principalId = user?.user_principal?.toString();
-    if (!principalId) return;
-
-    try {
-      await navigator.clipboard.writeText(principalId);
-      setCopiedPrincipal(true);
-      setTimeout(() => setCopiedPrincipal(false), 2000);
-    } catch (error) {
-      // Fallback for browsers that don't support clipboard API
-      const textArea = document.createElement('textarea');
-      textArea.value = principalId;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopiedPrincipal(true);
-      setTimeout(() => setCopiedPrincipal(false), 2000);
-    }
+  // Get current user's role as string for comparison
+  const getCurrentRoleString = () => {
+    if (!user) return '';
+    return getRoleString(user.role).toLowerCase();
   };
 
-  const getRoleString = (role: UserRole | undefined): string => {
-    if (!role) return 'Unknown Role';
-    return Object.keys(role)[0] || 'Unknown Role';
-  };
-
-  const getRoleIcon = (role: UserRole | undefined) => {
-    const roleStr = getRoleString(role);
-    switch (roleStr) {
-      case 'Manufacturer':
-        return <Factory className="h-8 w-8 text-blue-600" />;
-      case 'Distributor':
-        return <Truck className="h-8 w-8 text-green-600" />;
-      case 'Retailer':
-        return <ShoppingCart className="h-8 w-8 text-purple-600" />;
-      case 'Customer':
-        return <User className="h-8 w-8 text-orange-600" />;
-      default:
-        return <User className="h-8 w-8 text-gray-600" />;
-    }
-  };
-
-  const getRoleColor = (role: UserRole | undefined) => {
-    const roleStr = getRoleString(role);
-    switch (roleStr) {
-      case 'Manufacturer':
-        return 'bg-blue-100 text-blue-800';
-      case 'Distributor':
-        return 'bg-green-100 text-green-800';
-      case 'Retailer':
-        return 'bg-purple-100 text-purple-800';
-      case 'Customer':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (isLoading) {
+  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -118,127 +38,178 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-gray-600">
-            Welcome back, {user?.name}! Here's your supply chain overview.
-          </p>
-        </div>
-
-        {/* User Info Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-full ${getRoleColor(user?.role)}`}>
-              {getRoleIcon(user?.role)}
+        <div className="px-4 py-6 sm:px-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome, {user.name}!
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                {getRoleString(user.role)} • {user.company || 'No company'}
+              </p>
             </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900">{user?.name}</h2>
-              <p className="text-gray-600">{getRoleString(user?.role)}</p>
-              <div className="flex items-center space-x-2 mt-1">
-                <p className="text-sm text-gray-500">
-                  Principal ID: {user?.user_principal?.toString().slice(0, 8)}...
+            
+            {/* Test Mode User Switcher */}
+            {testMode && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-yellow-800 mb-2">
+                  🧪 Test Mode - Switch Users
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {testUsers.map((testUser) => (
+                    <button
+                      key={`${testUser.role}-${testUser.name}`}
+                      onClick={() => handleSwitchUser(testUser.role)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                        getCurrentRoleString() === testUser.role
+                          ? 'bg-yellow-200 border-yellow-400 text-yellow-800'
+                          : 'bg-white border-yellow-300 text-yellow-700 hover:bg-yellow-100'
+                      }`}
+                    >
+                      {testUser.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-yellow-600 mt-2">
+                  Click to switch to different test user roles
                 </p>
-                <button
-                  onClick={copyPrincipalId}
-                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-                  title="Copy full principal ID"
-                >
-                  {copiedPrincipal ? (
-                    <>
-                      <Check className="h-3 w-3 text-green-600" />
-                      <span className="text-green-600">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
               </div>
-            </div>
-          </div>
-          
-          {/* Principal ID Info */}
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <strong>💡 Share your Principal ID:</strong> Other users need your Principal ID to transfer products to you. 
-              Use the copy button above to share it easily.
-            </p>
+            )}
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Package className="h-6 w-6 text-blue-600" />
+        {/* Principal ID Display */}
+        <div className="px-4 py-6 sm:px-0">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Your Identity Information
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Principal ID
+                </label>
+                <div className="mt-1 flex items-center space-x-2">
+                  <code className="px-3 py-2 bg-gray-100 rounded text-sm font-mono text-gray-800 flex-1">
+                    {principalId}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(principalId || '');
+                    }}
+                    className="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-sm"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Share this ID with others for product transfers
+                </p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Products</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 rounded-lg bg-green-100">
-                <Users className="h-6 w-6 text-green-600" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Role
+                </label>
+                <div className="mt-1">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {getRoleString(user.role)}
+                  </span>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 rounded-lg bg-purple-100">
-                <DollarSign className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">${stats.totalRevenue}</p>
-              </div>
-            </div>
-          </div>
+              {user.company && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Company
+                  </label>
+                  <div className="mt-1">
+                    <p className="text-sm text-gray-900">{user.company}</p>
+                  </div>
+                </div>
+              )}
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className="p-2 rounded-lg bg-orange-100">
-                <TrendingUp className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Recent Activity</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.recentActivity}</p>
-              </div>
+              {user.email && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <div className="mt-1">
+                    <p className="text-sm text-gray-900">{user.email}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Package className="h-4 w-4 mr-2" />
-              View Products
-            </button>
-            <button className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <Users className="h-4 w-4 mr-2" />
-              View Orders
-            </button>
-            <button className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              View Analytics
-            </button>
+        <div className="px-4 py-6 sm:px-0">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Quick Actions
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <h3 className="font-medium text-gray-900">Products</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Manage your products and inventory
+                </p>
+                <a
+                  href="/products"
+                  className="mt-3 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  View Products →
+                </a>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <h3 className="font-medium text-gray-900">Transfers</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Transfer products to other users
+                </p>
+                <a
+                  href="/products"
+                  className="mt-3 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  Manage Transfers →
+                </a>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <h3 className="font-medium text-gray-900">Orders</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  View and manage orders
+                </p>
+                <a
+                  href="/orders"
+                  className="mt-3 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  View Orders →
+                </a>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Test Mode Info */}
+        {testMode && (
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <h2 className="text-lg font-medium text-green-800 mb-4">
+                🧪 Test Mode Active
+              </h2>
+              <div className="space-y-3 text-sm text-green-700">
+                <p>• You are currently in test mode - no Internet Identity required</p>
+                <p>• Use the user switcher above to test different roles</p>
+                <p>• All features work exactly the same as production</p>
+                <p>• Perfect for testing the complete supply chain workflow</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

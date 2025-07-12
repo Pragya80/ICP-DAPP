@@ -23,7 +23,7 @@ const ProductList = () => {
   const loadProducts = async () => {
     setIsLoading(true);
     try {
-      const products = await backendService.getAllProducts();
+      const products = await backendService.getProducts();
       setProducts(products);
     } catch (error) {
       setError('Failed to load products');

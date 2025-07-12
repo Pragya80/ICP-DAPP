@@ -118,10 +118,14 @@ pub fn register_user(
 ) -> Result<User,String>{
     let caller = get_caller();
     
-    // For testing, allow anonymous calls
-    let principal = if caller.to_string() == "2vxsx-fae" {
-        // Use a test principal for anonymous calls
-        Principal::from_text("2vxsx-fae").unwrap()
+    // For testing, allow test principals and anonymous calls
+    let principal = if caller.to_string() == "2vxsx-fae" || 
+                     caller.to_string() == "test-manufacturer-principal-123" ||
+                     caller.to_string() == "test-distributor-principal-456" ||
+                     caller.to_string() == "test-retailer-principal-789" ||
+                     caller.to_string() == "test-customer-principal-101" {
+        // Use the caller principal for test mode
+        caller
     } else {
         caller
     };
@@ -161,10 +165,14 @@ pub fn get_user(principal: Principal) -> Option<User> {
 pub fn get_current_user() -> Option<User>{
     let caller = get_caller();
     
-    // For testing, handle anonymous calls
-    let principal = if caller.to_string() == "2vxsx-fae" {
-        // Use a test principal for anonymous calls
-        Principal::from_text("2vxsx-fae").unwrap()
+    // For testing, handle test principals and anonymous calls
+    let principal = if caller.to_string() == "2vxsx-fae" || 
+                     caller.to_string() == "test-manufacturer-principal-123" ||
+                     caller.to_string() == "test-distributor-principal-456" ||
+                     caller.to_string() == "test-retailer-principal-789" ||
+                     caller.to_string() == "test-customer-principal-101" {
+        // Use the caller principal for test mode
+        caller
     } else {
         caller
     };
@@ -201,6 +209,18 @@ pub fn create_product(
 ) -> Result<Product,String>{
     let caller = get_caller();
     let current_user = get_current_user();
+    
+    // For test mode, handle test principals
+    let principal = if caller.to_string() == "2vxsx-fae" || 
+                     caller.to_string() == "test-manufacturer-principal-123" ||
+                     caller.to_string() == "test-distributor-principal-456" ||
+                     caller.to_string() == "test-retailer-principal-789" ||
+                     caller.to_string() == "test-customer-principal-101" {
+        caller
+    } else {
+        caller
+    };
+    
     if let Some(user) = current_user{
         match user.role{
             UserRole::Manufacturer => {},
@@ -211,8 +231,8 @@ pub fn create_product(
             id:product_id.clone(),
             name:name.clone(),
             description,
-            manufacturer:caller,
-            current_owner: caller, // Set current_owner to manufacturer
+            manufacturer:principal,
+            current_owner: principal, // Set current_owner to manufacturer
             price,
             quantity,
             status:ProductStatus::Available,
@@ -227,8 +247,8 @@ pub fn create_product(
         add_product_event(
             product_id,
             "Created".to_string(),
-            caller,
-            caller,
+            principal,
+            principal,
             format!("Product {} created by {}",name,user.name),
             get_current_timestamp(),
         );
@@ -247,13 +267,25 @@ pub fn transfer_product(
 ) -> Result<Product, String> {
     let caller = get_caller();
     let current_user = get_current_user();
+    
+    // For test mode, handle test principals
+    let principal = if caller.to_string() == "2vxsx-fae" || 
+                     caller.to_string() == "test-manufacturer-principal-123" ||
+                     caller.to_string() == "test-distributor-principal-456" ||
+                     caller.to_string() == "test-retailer-principal-789" ||
+                     caller.to_string() == "test-customer-principal-101" {
+        caller
+    } else {
+        caller
+    };
+    
     if let Some(user) = current_user {
         let product_opt = PRODUCTS.with(|products| {
             products.borrow().get(&product_id).cloned()
         });
         if let Some(mut product) = product_opt {
             // Only current_owner can transfer
-            if product.current_owner != caller {
+            if product.current_owner != principal {
                 return Err("You are not the current owner of this product".to_string());
             }
             // Manufacturer can transfer to Distributor
@@ -285,7 +317,7 @@ pub fn transfer_product(
             add_product_event(
                 product_id.clone(),
                 "Transferred".to_string(),
-                caller,
+                principal,
                 to_user,
                 description,
                 get_current_timestamp(),
@@ -310,6 +342,18 @@ pub fn sell_product(
 ) -> Result<Product, String> {
     let caller = get_caller();
     let current_user = get_current_user();
+    
+    // For test mode, handle test principals
+    let principal = if caller.to_string() == "2vxsx-fae" || 
+                     caller.to_string() == "test-manufacturer-principal-123" ||
+                     caller.to_string() == "test-distributor-principal-456" ||
+                     caller.to_string() == "test-retailer-principal-789" ||
+                     caller.to_string() == "test-customer-principal-101" {
+        caller
+    } else {
+        caller
+    };
+    
     if let Some(user) = current_user {
         let product_opt = PRODUCTS.with(|products| {
             products.borrow().get(&product_id).cloned()
@@ -319,7 +363,7 @@ pub fn sell_product(
             if user.role != UserRole::Retailer {
                 return Err("Only Retailer can sell to Customer".to_string());
             }
-            if product.current_owner != caller {
+            if product.current_owner != principal {
                 return Err("You are not the current owner of this product".to_string());
             }
             // Reduce quantity
@@ -335,7 +379,7 @@ pub fn sell_product(
             add_product_event(
                 product_id.clone(),
                 "Sold".to_string(),
-                caller,
+                principal,
                 customer,
                 description,
                 get_current_timestamp(),

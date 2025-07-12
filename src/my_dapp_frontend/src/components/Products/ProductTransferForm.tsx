@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import backendService, { type ProductTransferRequest } from '../../services/backendService';
 import type { Product } from '@shared/types';
 import { getRoleString } from '@shared/types';
 import { ArrowRight, X, User } from 'lucide-react';
@@ -44,19 +45,18 @@ const ProductTransferForm = ({ product, onClose, onTransferSuccess }: ProductTra
     setIsLoading(true);
 
     try {
-      // Convert principal string to Principal object
-      const result = await backendService.transferProduct(
-        product.id,
-        formData.toPrincipal,
-        formData.description || `Transfer from ${userRole} to ${getTransferTarget()}`
-      );
+      const transferRequest: ProductTransferRequest = {
+        productId: product.id,
+        toPrincipal: formData.toPrincipal,
+        notes: formData.description || `Transfer from ${userRole} to ${getTransferTarget()}`
+      };
 
-      if ('Ok' in result) {
-        onTransferSuccess(result.Ok);
-        onClose();
-      } else {
-        setError(result.Err);
-      }
+      await backendService.transferProduct(transferRequest);
+      
+      // For now, we'll just close the form since transferProduct returns void
+      // In a real app, you might want to fetch the updated product
+      onTransferSuccess(product); // Pass the original product for now
+      onClose();
     } catch (error) {
       setError('Transfer failed. Please check the principal ID and try again.');
     } finally {
