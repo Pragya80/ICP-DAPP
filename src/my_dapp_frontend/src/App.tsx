@@ -6,7 +6,6 @@ import HomePage from './components/Layout/HomePage';
 import Dashboard from './components/Dashboard/Dashboard';
 import ProductList from './components/Products/ProductList';
 import OrderList from './components/Orders/OrderList';
-import Login from './components/Auth/Login';
 import UserRegistration from './components/Auth/UserRegistration';
 
 function AppContent() {
@@ -23,11 +22,7 @@ function AppContent() {
     );
   }
 
-  // For login and registration, render without layout
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
+  // For registration, render without layout
   if (!isRegistered) {
     return <UserRegistration />;
   }

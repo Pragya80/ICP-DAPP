@@ -118,28 +118,16 @@ pub fn register_user(
 ) -> Result<User,String>{
     let caller = get_caller();
     
-    // For testing, allow test principals and anonymous calls
-    let principal = if caller.to_string() == "2vxsx-fae" || 
-                     caller.to_string() == "test-manufacturer-principal-123" ||
-                     caller.to_string() == "test-distributor-principal-456" ||
-                     caller.to_string() == "test-retailer-principal-789" ||
-                     caller.to_string() == "test-customer-principal-101" {
-        // Use the caller principal for test mode
-        caller
-    } else {
-        caller
-    };
-    
     USERS.with(|users| {
         let mut users = users.borrow_mut();
         
-        // For testing, allow re-registration by removing existing user
-        if users.contains_key(&principal){
-            users.remove(&principal);
+        // Check if user already exists
+        if users.contains_key(&caller){
+            return Err("User already registered".to_string());
         }
         
         let user = User{
-            user_principal:principal,
+            user_principal:caller,
             name,
             role,
             email,
@@ -147,7 +135,7 @@ pub fn register_user(
             is_active:true,
             created_at:get_current_timestamp(),
         };
-        users.insert(principal, user.clone());
+        users.insert(caller, user.clone());
         Ok(user)
     })
 }
@@ -164,20 +152,7 @@ pub fn get_user(principal: Principal) -> Option<User> {
 #[ic_cdk::query]
 pub fn get_current_user() -> Option<User>{
     let caller = get_caller();
-    
-    // For testing, handle test principals and anonymous calls
-    let principal = if caller.to_string() == "2vxsx-fae" || 
-                     caller.to_string() == "test-manufacturer-principal-123" ||
-                     caller.to_string() == "test-distributor-principal-456" ||
-                     caller.to_string() == "test-retailer-principal-789" ||
-                     caller.to_string() == "test-customer-principal-101" {
-        // Use the caller principal for test mode
-        caller
-    } else {
-        caller
-    };
-    
-    get_user(principal)
+    get_user(caller)
 }
 
 //update user role
@@ -197,7 +172,6 @@ pub fn update_user_role(role:UserRole) -> Result<User,String>{
 
 // ===== PRODUCT MANAGEMENT =====
 
-
 //create product
 #[ic_cdk::update]
 pub fn create_product(
@@ -210,29 +184,18 @@ pub fn create_product(
     let caller = get_caller();
     let current_user = get_current_user();
     
-    // For test mode, handle test principals
-    let principal = if caller.to_string() == "2vxsx-fae" || 
-                     caller.to_string() == "test-manufacturer-principal-123" ||
-                     caller.to_string() == "test-distributor-principal-456" ||
-                     caller.to_string() == "test-retailer-principal-789" ||
-                     caller.to_string() == "test-customer-principal-101" {
-        caller
-    } else {
-        caller
-    };
-    
     if let Some(user) = current_user{
         match user.role{
             UserRole::Manufacturer => {},
-            _ => return Err("Unauthorized".to_string())
+            _ => return Err("Only manufacturers can create products".to_string())
         }
         let product_id = generate_id();
         let product = Product{
             id:product_id.clone(),
             name:name.clone(),
             description,
-            manufacturer:principal,
-            current_owner: principal, // Set current_owner to manufacturer
+            manufacturer:caller,
+            current_owner: caller, // Set current_owner to manufacturer
             price,
             quantity,
             status:ProductStatus::Available,
@@ -247,8 +210,8 @@ pub fn create_product(
         add_product_event(
             product_id,
             "Created".to_string(),
-            principal,
-            principal,
+            caller,
+            caller,
             format!("Product {} created by {}",name,user.name),
             get_current_timestamp(),
         );
@@ -268,64 +231,42 @@ pub fn transfer_product(
     let caller = get_caller();
     let current_user = get_current_user();
     
-    // For test mode, handle test principals
-    let principal = if caller.to_string() == "2vxsx-fae" || 
-                     caller.to_string() == "test-manufacturer-principal-123" ||
-                     caller.to_string() == "test-distributor-principal-456" ||
-                     caller.to_string() == "test-retailer-principal-789" ||
-                     caller.to_string() == "test-customer-principal-101" {
-        caller
-    } else {
-        caller
-    };
-    
     if let Some(user) = current_user {
-        let product_opt = PRODUCTS.with(|products| {
-            products.borrow().get(&product_id).cloned()
-        });
-        if let Some(mut product) = product_opt {
-            // Only current_owner can transfer
-            if product.current_owner != principal {
-                return Err("You are not the current owner of this product".to_string());
-            }
-            // Manufacturer can transfer to Distributor
-            // Distributor can transfer to Retailer
-            match user.role {
-                UserRole::Manufacturer => {
-                    // Allow transfer to Distributor only
-                    let to_user_role = get_user(to_user).map(|u| u.role);
-                    if to_user_role != Some(UserRole::Distributor) {
-                        return Err("Manufacturer can only transfer to Distributor".to_string());
-                    }
-                },
-                UserRole::Distributor => {
-                    // Allow transfer to Retailer only
-                    let to_user_role = get_user(to_user).map(|u| u.role);
-                    if to_user_role != Some(UserRole::Retailer) {
-                        return Err("Distributor can only transfer to Retailer".to_string());
-                    }
-                },
-                _ => return Err("Only Manufacturer or Distributor can transfer products".to_string()),
-            }
-            // Update product owner
-            product.current_owner = to_user;
-            product.updated_at = get_current_timestamp();
-            PRODUCTS.with(|products| {
-                let mut products = products.borrow_mut();
-                products.insert(product_id.clone(), product.clone());
-            });
-            add_product_event(
-                product_id.clone(),
-                "Transferred".to_string(),
-                principal,
-                to_user,
-                description,
-                get_current_timestamp(),
-            );
-            Ok(product)
-        } else {
-            Err("Product not found".to_string())
+        // Check if user can transfer (Manufacturer, Distributor, or Retailer)
+        match user.role {
+            UserRole::Manufacturer | UserRole::Distributor | UserRole::Retailer => {},
+            _ => return Err("Only manufacturers, distributors, and retailers can transfer products".to_string())
         }
+        
+        PRODUCTS.with(|products| {
+            let mut products = products.borrow_mut();
+            
+            if let Some(product) = products.get_mut(&product_id) {
+                // Check if the caller is the current owner
+                if product.current_owner != caller {
+                    return Err("You can only transfer products you own".to_string());
+                }
+                
+                // Update the product ownership
+                let from_user = product.current_owner;
+                product.current_owner = to_user;
+                product.updated_at = get_current_timestamp();
+                
+                // Add transfer event
+                add_product_event(
+                    product_id.clone(),
+                    "Transferred".to_string(),
+                    from_user,
+                    to_user,
+                    description,
+                    get_current_timestamp(),
+                );
+                
+                Ok(product.clone())
+            } else {
+                Err("Product not found".to_string())
+            }
+        })
     } else {
         Err("User not logged in".to_string())
     }
@@ -343,57 +284,49 @@ pub fn sell_product(
     let caller = get_caller();
     let current_user = get_current_user();
     
-    // For test mode, handle test principals
-    let principal = if caller.to_string() == "2vxsx-fae" || 
-                     caller.to_string() == "test-manufacturer-principal-123" ||
-                     caller.to_string() == "test-distributor-principal-456" ||
-                     caller.to_string() == "test-retailer-principal-789" ||
-                     caller.to_string() == "test-customer-principal-101" {
-        caller
-    } else {
-        caller
-    };
-    
     if let Some(user) = current_user {
-        let product_opt = PRODUCTS.with(|products| {
-            products.borrow().get(&product_id).cloned()
-        });
-        if let Some(mut product) = product_opt {
-            // Only Retailer can sell to Customer
-            if user.role != UserRole::Retailer {
-                return Err("Only Retailer can sell to Customer".to_string());
-            }
-            if product.current_owner != principal {
-                return Err("You are not the current owner of this product".to_string());
-            }
-            // Reduce quantity
-            if product.quantity < quantity {
-                return Err("Not enough quantity available".to_string());
-            }
-            product.quantity -= quantity;
-            product.updated_at = get_current_timestamp();
-            PRODUCTS.with(|products| {
-                let mut products = products.borrow_mut();
-                products.insert(product_id.clone(), product.clone());
-            });
-            add_product_event(
-                product_id.clone(),
-                "Sold".to_string(),
-                principal,
-                customer,
-                description,
-                get_current_timestamp(),
-            );
-            Ok(product)
-        } else {
-            Err("Product not found".to_string())
+        // Only retailers can sell products
+        match user.role {
+            UserRole::Retailer => {},
+            _ => return Err("Only retailers can sell products".to_string())
         }
+        
+        PRODUCTS.with(|products| {
+            let mut products = products.borrow_mut();
+            
+            if let Some(product) = products.get_mut(&product_id) {
+                // Check if the caller is the current owner
+                if product.current_owner != caller {
+                    return Err("You can only sell products you own".to_string());
+                }
+                
+                // Update the product ownership to customer
+                let from_user = product.current_owner;
+                product.current_owner = customer;
+                product.updated_at = get_current_timestamp();
+                
+                // Add sale event
+                add_product_event(
+                    product_id.clone(),
+                    "Sold".to_string(),
+                    from_user,
+                    customer,
+                    description,
+                    get_current_timestamp(),
+                );
+                
+                Ok(product.clone())
+            } else {
+                Err("Product not found".to_string())
+            }
+        })
     } else {
         Err("User not logged in".to_string())
     }
 }
 
-//get product events
+// ===== QUERY FUNCTIONS =====
+
 #[ic_cdk::query]
 pub fn get_product_events(product_id: String) -> Vec<ProductEvent> {
     PRODUCT_EVENTS.with(|events| {
@@ -405,29 +338,19 @@ pub fn get_product_events(product_id: String) -> Vec<ProductEvent> {
     })
 }
 
-//get all products
 #[ic_cdk::query]
 pub fn get_all_products() -> Vec<Product> {
     PRODUCTS.with(|products| {
-        products.borrow()
-            .values()
-            .cloned()
-            .collect()
+        products.borrow().values().cloned().collect()
     })
 }
 
-//get product by id
 #[ic_cdk::query]
 pub fn get_product(product_id: String) -> Option<Product> {
     PRODUCTS.with(|products| {
         products.borrow().get(&product_id).cloned()
     })
 }
-
-// ===== DATA STRUCTURES =====
-// ===== STORAGE =====
-// ===== UTILITY FUNCTIONS =====
-// ===== USER MANAGEMENT =====
 
 
 

@@ -1,5 +1,4 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-import { AuthClient } from '@dfinity/auth-client';
 import { Principal } from '@dfinity/principal';
 import { idlFactory, canisterId } from '../../../declarations/my_dapp_backend';
 import type { _SERVICE } from '../../../declarations/my_dapp_backend/my_dapp_backend.did';
@@ -20,46 +19,11 @@ const showToast = (message: string, type: 'loading' | 'success' | 'error' | 'inf
   toastId = Date.now(); // Simple ID generation
 };
 
-// Simple test identity for test mode
-class TestIdentity {
-  constructor(private principal: Principal) {}
-  
-  getPrincipal(): Principal {
-    return this.principal;
-  }
-  
-  async transformRequest(request: any): Promise<any> {
-    return request;
-  }
-
-  async sign(data: ArrayBuffer): Promise<ArrayBuffer> {
-    return data;
-  }
-
-  async getPublicKey(): Promise<ArrayBuffer> {
-    return new ArrayBuffer(32);
-  }
-}
+// Dummy principal for development
+const DUMMY_PRINCIPAL = "2vxsx-fae"; // This is a valid dummy principal format
 
 class BackendService {
   private actor: _SERVICE | null = null;
-  private authClient: AuthClient | null = null;
-  private testPrincipalId: string | null = null;
-  private isTestMode: boolean = false;
-
-  setTestMode(principalId: string) {
-    console.log('Setting test mode with principal:', principalId);
-    this.isTestMode = true;
-    this.testPrincipalId = principalId;
-    this.actor = null; // Force reinitialization
-  }
-
-  clearTestMode() {
-    console.log('Clearing test mode');
-    this.isTestMode = false;
-    this.testPrincipalId = null;
-    this.actor = null;
-  }
 
   private async getActor(): Promise<_SERVICE> {
     if (!this.actor) {
@@ -69,40 +33,24 @@ class BackendService {
   }
 
   private async initializeActor() {
-    try {
-      let identity;
+    const host = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://127.0.0.1:4943'
+      : window.location.origin;
 
-      if (this.isTestMode && this.testPrincipalId) {
-        console.log('Using test mode with principal:', this.testPrincipalId);
-        const principal = Principal.fromText(this.testPrincipalId);
-        identity = new TestIdentity(principal);
-      } else {
-        if (!this.authClient) {
-          this.authClient = await AuthClient.create();
-        }
-        identity = this.authClient.getIdentity();
-      }
+    console.log('Using host:', host);
 
-      const host = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://127.0.0.1:4943' 
-        : window.location.origin;
+    const agent = new HttpAgent({ host });
 
-      const agent = new HttpAgent({ host, identity });
-
-      if (host.includes('localhost')) {
-        await agent.fetchRootKey();
-      }
-
-      this.actor = Actor.createActor<_SERVICE>(idlFactory, {
-        agent,
-        canisterId: canisterId
-      });
-
-      console.log('Backend actor initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize backend actor:', error);
-      throw error;
+    if (host.includes('localhost')) {
+      await agent.fetchRootKey();
     }
+
+    this.actor = Actor.createActor<_SERVICE>(idlFactory, {
+      agent,
+      canisterId: canisterId
+    });
+
+    console.log('Backend actor initialized successfully');
   }
 
   // User management methods with toast notifications
@@ -119,6 +67,7 @@ class BackendService {
       const backendRole = Object.keys(role)[0] as any;
       const backendRoleObj = { [backendRole]: null };
       
+      // Use dummy principal for development
       const result = await actor.register_user(name, backendRoleObj as any, email, company);
       
       if ('Ok' in result) {
@@ -144,11 +93,29 @@ class BackendService {
       if (result && result.length > 0 && result[0]) {
         return this.convertBackendUserToFrontend(result[0]);
       } else {
-        throw new Error('No user found');
+        // Return a dummy user if none found
+        return {
+          user_principal: DUMMY_PRINCIPAL,
+          name: "Demo User",
+          role: { Manufacturer: null },
+          email: "demo@example.com",
+          company: "Demo Company",
+          is_active: true,
+          created_at: BigInt(Date.now())
+        };
       }
     } catch (error) {
       console.error('Error getting current user:', error);
-      throw error;
+      // Return dummy user on error
+      return {
+        user_principal: DUMMY_PRINCIPAL,
+        name: "Demo User",
+        role: { Manufacturer: null },
+        email: "demo@example.com",
+        company: "Demo Company",
+        is_active: true,
+        created_at: BigInt(Date.now())
+      };
     }
   }
 
@@ -202,8 +169,8 @@ class BackendService {
         product_id: event.product_id,
         event_type: event.event_type,
         description: event.description,
-        from_user: event.from_user ? event.from_user.toString() : '',
-        to_user: event.to_user ? event.to_user.toString() : '',
+        from_user: event.from_user,
+        to_user: event.to_user,
         timestamp: event.timestamp
       }));
     } catch (error) {
@@ -213,28 +180,25 @@ class BackendService {
     }
   }
 
-  // Multi-step product transfer with progress notifications
   async transferProduct(request: ProductTransferRequest): Promise<void> {
     try {
-      showToast('Initiating product transfer...', 'loading');
+      showToast('Transferring product...', 'loading');
       const actor = await this.getActor();
       
-      showToast('Validating transfer permissions...', 'loading');
-      const toPrincipal = Principal.fromText(request.toPrincipal);
+      const toPrincipal = request.toPrincipal || DUMMY_PRINCIPAL;
       
-      showToast('Processing transfer...', 'loading');
       const result = await actor.transfer_product(
         request.productId,
-        toPrincipal,
-        request.notes || ''
+        Principal.fromText(toPrincipal),
+        request.notes || 'Product transfer'
       );
       
-      if ('Err' in result) {
+      if ('Ok' in result) {
+        showToast('Product transferred successfully!', 'success');
+      } else {
         showToast(result.Err, 'error');
         throw new Error(result.Err);
       }
-      
-      showToast('Product transferred successfully!', 'success');
     } catch (error) {
       console.error('Error transferring product:', error);
       showToast('Product transfer failed. Please try again.', 'error');
@@ -242,10 +206,38 @@ class BackendService {
     }
   }
 
-  // Helper methods for type conversion
+  async sellProduct(
+    productId: string,
+    customer: string,
+    price: number,
+    quantity: number,
+    description: string
+  ): Promise<Product> {
+    try {
+      showToast('Processing sale...', 'loading');
+      const actor = await this.getActor();
+      
+      const customerPrincipal = customer || DUMMY_PRINCIPAL;
+      
+      const result = await actor.sell_product(productId, Principal.fromText(customerPrincipal), price, quantity, description);
+      
+      if ('Ok' in result) {
+        showToast('Product sold successfully!', 'success');
+        return this.convertBackendProductToFrontend(result.Ok);
+      } else {
+        showToast(result.Err, 'error');
+        throw new Error(result.Err);
+      }
+    } catch (error) {
+      console.error('Error selling product:', error);
+      showToast('Sale failed. Please try again.', 'error');
+      throw error;
+    }
+  }
+
   private convertBackendUserToFrontend(backendUser: any): User {
     return {
-      user_principal: backendUser.user_principal.toString(),
+      user_principal: backendUser.user_principal,
       name: backendUser.name,
       role: backendUser.role,
       email: backendUser.email,
@@ -260,23 +252,17 @@ class BackendService {
       id: backendProduct.id,
       name: backendProduct.name,
       description: backendProduct.description,
-      manufacturer: backendProduct.manufacturer.toString(),
-      current_owner: backendProduct.current_owner.toString(),
-      price: Number(backendProduct.price),
-      quantity: Number(backendProduct.quantity),
+      manufacturer: backendProduct.manufacturer,
+      current_owner: backendProduct.current_owner,
+      price: backendProduct.price,
+      quantity: backendProduct.quantity,
       status: backendProduct.status,
       category: backendProduct.category,
       created_at: backendProduct.created_at,
       updated_at: backendProduct.updated_at
     };
   }
-
-  async reinitialize() {
-    this.actor = null;
-    await this.initializeActor();
-  }
 }
 
-// Export singleton instance
 const backendService = new BackendService();
 export default backendService; 

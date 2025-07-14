@@ -1,12 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthClient } from '@dfinity/auth-client';
 import backendService from '../services/backendService';
 import type { User, UserRole } from '@shared/types';
 
-// 1. Use env variable for identity provider
-const IDENTITY_PROVIDER = import.meta.env.VITE_IDENTITY_PROVIDER || 'http://127.0.0.1:4943/?canisterId=uxrrr-q7777-77774-qaaaq-cai';
-
-// 5. Type safety for backend responses
+// Type safety for backend responses
 interface RegisterUserResult {
   success: boolean;
   user?: User;
@@ -24,84 +20,50 @@ interface AuthContextType {
   logout: () => Promise<void>;
   registerUser: (name: string, role: UserRole, email?: string, company?: string) => Promise<RegisterUserResult>;
   backendService: typeof backendService;
-  testMode: boolean;
-  switchToTestMode: () => void;
-  switchTestPrincipal: (role: keyof typeof TEST_PRINCIPALS) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const TEST_PRINCIPALS = {
-  manufacturer: 'test-manufacturer-principal-123',
-  distributor: 'test-distributor-principal-456', 
-  retailer: 'test-retailer-principal-789',
-  customer: 'test-customer-principal-101'
-};
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Singleton AuthClient management (like the SvelteKit pattern)
-let authClient: AuthClient | null = null;
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState({
-    authClient: null as AuthClient | null,
-    isAuthenticated: false,
     user: null as User | null,
     isLoading: true,
     isRegistered: false,
-    principalId: null as string | null,
-    testMode: false,
     error: null as string | null
   });
 
   useEffect(() => {
     initializeAuth();
-    // 7. Cleanup auth client
-    return () => {
-      setState(prev => ({ ...prev, authClient: null }));
-    };
   }, []);
 
   const initializeAuth = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      if (state.testMode) {
-        setState(prev => ({ ...prev, isLoading: false }));
-        return;
+      // For development, always consider user as authenticated
+      try {
+        const currentUser = await backendService.getCurrentUser();
+        setState(prev => ({
+          ...prev,
+          user: currentUser,
+          isRegistered: true,
+          isLoading: false,
+          error: null
+        }));
+      } catch (error) {
+        // User not registered, but still authenticated for demo
+        setState(prev => ({
+          ...prev,
+          user: null,
+          isRegistered: false,
+          isLoading: false,
+          error: null
+        }));
       }
-
-      // Use singleton pattern for AuthClient
-      authClient = authClient ?? (await AuthClient.create());
-      const isAuthenticated = await authClient.isAuthenticated();
-
-      let principalId = null;
-      let currentUser = null;
-
-      if (isAuthenticated) {
-        const identity = authClient.getIdentity();
-        principalId = identity.getPrincipal().toString();
-        
-        try {
-          currentUser = await backendService.getCurrentUser();
-        } catch (error) {
-          // User not registered
-        }
-      }
-
-      setState(prev => ({
-        ...prev,
-        authClient,
-        isAuthenticated,
-        user: currentUser,
-        isLoading: false,
-        isRegistered: !!currentUser,
-        principalId,
-        error: null
-      }));
     } catch (error) {
       setState(prev => ({ 
         ...prev, 
@@ -111,104 +73,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const switchToTestMode = () => {
-    backendService.setTestMode(TEST_PRINCIPALS.manufacturer);
-    setState(prev => ({
-      ...prev,
-      testMode: true,
-      isLoading: false,
-      authClient: null,
-      isAuthenticated: false,
-      user: null,
-      isRegistered: false,
-      principalId: TEST_PRINCIPALS.manufacturer,
-      error: null
-    }));
-  };
-
-  const switchTestPrincipal = (role: keyof typeof TEST_PRINCIPALS) => {
-    if (!state.testMode) return;
-    
-    const newPrincipalId = TEST_PRINCIPALS[role];
-    backendService.setTestMode(newPrincipalId);
-    
-    setState(prev => ({
-      ...prev,
-      principalId: newPrincipalId,
-      user: null,
-      isRegistered: false,
-      isAuthenticated: false,
-      error: null
-    }));
-  };
-
-  // 2. Remove window.location.reload(), update state instead
   const login = async () => {
-    if (state.testMode) {
-      setState(prev => ({ 
-        ...prev, 
-        isAuthenticated: true, 
-        principalId: TEST_PRINCIPALS.manufacturer, 
-        error: null 
-      }));
-      return;
-    }
-
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      // Use singleton pattern
-      authClient = authClient ?? (await AuthClient.create());
-      
-      await new Promise<void>((resolve, reject) => {
-        authClient!.login({
-          identityProvider: IDENTITY_PROVIDER,
-          onSuccess: () => {
-            resolve();
-          },
-          onError: (error) => {
-            setState(prev => ({ ...prev, error: 'Login failed.' }));
-            reject(error);
-          }
-        });
-      });
-
-      // After login, re-initialize state
-      await initializeAuth();
+      // For demo, login is always successful
+      setState(prev => ({ ...prev, isLoading: false }));
     } catch (error) {
-      setState(prev => ({ ...prev, isLoading: false, error: 'Login error.' }));
+      setState(prev => ({ ...prev, isLoading: false, error: 'Login failed.' }));
     }
   };
 
   const logout = async () => {
-    if (state.testMode) {
-      backendService.clearTestMode();
-      setState(prev => ({ 
-        ...prev, 
-        isAuthenticated: false, 
-        user: null, 
-        isRegistered: false, 
-        principalId: null, 
-        error: null 
-      }));
-      return;
-    }
-
     try {
-      // Use singleton pattern for logout
-      const client: AuthClient = authClient ?? (await AuthClient.create());
-      await client.logout();
-      
-      // Reset authClient to null (like the SvelteKit pattern)
-      authClient = null;
-      
       setState(prev => ({ 
         ...prev, 
-        authClient: null, 
-        isAuthenticated: false, 
         user: null, 
         isRegistered: false, 
-        principalId: null, 
         error: null 
       }));
     } catch (error) {
@@ -216,32 +96,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // 3. Add error state, 5. Type safety
   const registerUser = async (name: string, role: UserRole, email: string = '', company: string = ''): Promise<RegisterUserResult> => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      if (state.testMode) {
-        const mockUser: User = {
-          user_principal: state.principalId || TEST_PRINCIPALS.manufacturer,
-          name,
-          role,
-          email,
-          company,
-          is_active: true,
-          created_at: BigInt(Date.now() * 1000000)
-        };
-
-        setState(prev => ({ 
-          ...prev, 
-          user: mockUser, 
-          isRegistered: true, 
-          isLoading: false, 
-          error: null 
-        }));
-        return { success: true, user: mockUser };
-      }
-
       const result = await backendService.registerUser(name, role, email, company);
       
       if ('Ok' in result) {
@@ -265,29 +123,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextType = {
     user: state.user,
-    isAuthenticated: state.isAuthenticated,
+    isAuthenticated: true, // Always authenticated for demo
     isRegistered: state.isRegistered,
     isLoading: state.isLoading,
-    principalId: state.principalId,
+    principalId: "2vxsx-fae", // Dummy principal
     error: state.error,
     login,
     logout,
     registerUser,
-    backendService,
-    testMode: state.testMode,
-    switchToTestMode,
-    switchTestPrincipal
+    backendService
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {/* 4. Test mode banner */}
-      {state.testMode && (
-        <div style={{ background: '#fbbf24', color: '#78350f', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>
-          Test Mode Active
-        </div>
-      )}
-      {/* 3. Error banner */}
+      {/* Error banner */}
       {state.error && (
         <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>
           {state.error}

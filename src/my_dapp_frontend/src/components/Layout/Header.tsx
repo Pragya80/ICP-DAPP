@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getRoleString } from '@shared/types';
 
 const Header: React.FC = () => {
-  const { user, logout, principalId } = useAuth();
+  const { user, principalId } = useAuth();
   const location = useLocation();
 
   const navigation = [
@@ -12,14 +12,6 @@ const Header: React.FC = () => {
     { name: 'Products', href: '/products' },
     { name: 'Orders', href: '/orders' },
   ];
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -67,17 +59,6 @@ const Header: React.FC = () => {
                       {principalId.slice(0, 8)}...{principalId.slice(-6)}
                     </p>
                   )}
-                </div>
-                <div className="relative">
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-md text-sm font-medium text-gray-700 transition-colors"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span className="hidden sm:inline">Logout</span>
-                  </button>
                 </div>
               </div>
             )}
